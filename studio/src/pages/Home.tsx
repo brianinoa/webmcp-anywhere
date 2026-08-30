@@ -4,7 +4,7 @@ import { api } from "../api";
 import { RecipeCard } from "../components/RecipeCard";
 import { useAsync, useDebounced } from "../hooks";
 
-const REPO_URL = "#"; // TODO: GitHub repo link
+const REPO_URL = "https://github.com/brianinoa/webmcp-anywhere";
 
 export function Home() {
   const [q, setQ] = useState("");

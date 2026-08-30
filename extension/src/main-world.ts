@@ -337,7 +337,8 @@ async function main(): Promise<void> {
   postToIsolated({ type: "ready", url: location.href, hasModelContext: true });
 
   try {
-    mc.addEventListener("toolchange", () => log("modelContext toolchange event"));
+    // Fires once per (un)registration, so keep it out of the console by default.
+    mc.addEventListener("toolchange", () => {});
   } catch {
     /* optional */
   }

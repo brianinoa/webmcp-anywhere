@@ -197,7 +197,7 @@ export interface ExtensionSettings {
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
-  apiBase: "http://localhost:8787",
+  apiBase: "https://webmcp-anywhere.briandaniloinoa.workers.dev",
   approveSensitive: true,
   approveWrites: false,
   showBadge: true,

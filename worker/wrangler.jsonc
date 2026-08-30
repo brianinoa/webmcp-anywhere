@@ -11,12 +11,8 @@
   "kv_namespaces": [
     {
       "binding": "RECIPES",
-      // Placeholder ids. Create real ones with:
-      //   wrangler kv namespace create RECIPES
-      //   wrangler kv namespace create RECIPES --preview
-      // and paste the ids here. `wrangler dev` uses a local KV and ignores the ids.
-      "id": "00000000000000000000000000000000",
-      "preview_id": "00000000000000000000000000000001"
+      // `wrangler dev` uses a local KV and ignores this id.
+      "id": "bb37d064e7ae4177bc00ad0a8246a93a"
     }
   ],
   "assets": {

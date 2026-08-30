@@ -7,8 +7,9 @@ import youtube from "../../recipes/youtube.json";
 import wikipedia from "../../recipes/wikipedia.json";
 import hackernews from "../../recipes/hackernews.json";
 import github from "../../recipes/github.json";
+import twitch from "../../recipes/twitch.json";
 
-const FIRST_PARTY = [youtube, wikipedia, hackernews, github] as unknown as Recipe[];
+const FIRST_PARTY = [youtube, wikipedia, hackernews, github, twitch] as unknown as Recipe[];
 
 const tool = (actions: ExtRecipeAction[], extra: Partial<RecipeTool> = {}): RecipeTool => ({
   name: "t",

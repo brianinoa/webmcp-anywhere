@@ -7,8 +7,9 @@ import youtube from "../../../recipes/youtube.json";
 import wikipedia from "../../../recipes/wikipedia.json";
 import hackernews from "../../../recipes/hackernews.json";
 import github from "../../../recipes/github.json";
+import twitch from "../../../recipes/twitch.json";
 
-export const FIRST_PARTY_RECIPES: Recipe[] = [youtube, wikipedia, hackernews, github] as unknown as Recipe[];
+export const FIRST_PARTY_RECIPES: Recipe[] = [youtube, wikipedia, hackernews, github, twitch] as unknown as Recipe[];
 
 /** Ids of bundled recipes; `js` actions are permitted only for these. */
 export const FIRST_PARTY_RECIPE_IDS = new Set(FIRST_PARTY_RECIPES.map((r) => r.id));

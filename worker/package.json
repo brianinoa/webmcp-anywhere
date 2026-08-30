@@ -1,0 +1,26 @@
+{
+  "name": "@webmcp-anywhere/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WebMCP Anywhere — Cloudflare Worker: recipe CRUD + sync on KV, serves the Recipe Studio.",
+  "scripts": {
+    "gen-seed": "node scripts/gen-seed.mjs",
+    "predev": "node scripts/gen-seed.mjs",
+    "dev": "wrangler dev --port 8787",
+    "prebuild": "node scripts/gen-seed.mjs",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "predeploy": "node scripts/gen-seed.mjs",
+    "deploy": "wrangler deploy",
+    "pretypecheck": "node scripts/gen-seed.mjs && wrangler types",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@webmcp-anywhere/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.127.1"
+  }
+}

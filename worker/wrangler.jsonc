@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "webmcp-anywhere",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "kv_namespaces": [
+    {
+      "binding": "RECIPES",
+      // Placeholder ids. Create real ones with:
+      //   wrangler kv namespace create RECIPES
+      //   wrangler kv namespace create RECIPES --preview
+      // and paste the ids here. `wrangler dev` uses a local KV and ignores the ids.
+      "id": "00000000000000000000000000000000",
+      "preview_id": "00000000000000000000000000000001"
+    }
+  ],
+  "assets": {
+    // Built by `pnpm --filter @webmcp-anywhere/studio build`.
+    "directory": "../studio/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Every request goes through the Worker so we can add the WebMCP
+    // headers (Origin-Agent-Cluster, Permissions-Policy) to static assets.
+    "run_worker_first": true
+  }
+}

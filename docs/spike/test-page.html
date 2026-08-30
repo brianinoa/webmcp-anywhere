@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>WMA spike test page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 720px; margin: 3rem auto; padding: 0 1rem; color: #111; background: #fff; }
+    #status { padding: .75rem 1rem; border-radius: 8px; background: #f3f4f6; font-family: ui-monospace, monospace; white-space: pre-wrap; }
+    .ok { background: #dcfce7 !important; } .bad { background: #fee2e2 !important; }
+    code { background: #f3f4f6; padding: 0 .3em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>WebMCP Anywhere — spike test page</h1>
+  <p>This page registers ONE tool of its own (<code>native_ping</code>). The spike extension should add
+     <code>wma_ping</code> and <code>read_headings</code>. Compare which of the three the agent can see.</p>
+
+  <div id="status">checking document.modelContext…</div>
+
+  <h2>Expected tool set</h2>
+  <ul>
+    <li><code>native_ping</code> — registered by this page (control)</li>
+    <li><code>wma_ping</code> — registered by the extension (the thing under test)</li>
+    <li><code>read_headings</code> — registered by the extension</li>
+  </ul>
+
+  <h2>Second heading, for read_headings</h2>
+  <h3>Third heading, also for read_headings</h3>
+
+  <script>
+    (async () => {
+      const el = document.getElementById("status");
+      const lines = [];
+      const log = (s) => { lines.push(s); el.textContent = lines.join("\n"); console.log("[test-page]", s); };
+
+      log(`location: ${location.href}`);
+      log(`isSecureContext: ${window.isSecureContext}`);
+      log(`originAgentCluster: ${window.originAgentCluster}`);
+
+      const start = Date.now();
+      let mc = document.modelContext || navigator.modelContext;
+      while (!mc && Date.now() - start < 5000) {
+        await new Promise((r) => setTimeout(r, 50));
+        mc = document.modelContext || navigator.modelContext;
+      }
+      if (!mc) {
+        el.classList.add("bad");
+        log("document.modelContext: MISSING after 5s (enable chrome://flags/#enable-webmcp-testing, or use ChatGPT desktop browser)");
+        return;
+      }
+      log(`modelContext: FOUND after ${Date.now() - start}ms via ${document.modelContext ? "document" : "navigator (deprecated)"}`);
+
+      try {
+        await mc.registerTool({
+          name: "native_ping",
+          description: "Control tool registered by the page itself. Echoes the message.",
+          inputSchema: { type: "object", properties: { message: { type: "string" } }, required: ["message"] },
+          annotations: { readOnlyHint: true },
+          async execute({ message }) {
+            document.body.style.background = "#fef9c3";
+            setTimeout(() => (document.body.style.background = ""), 1200);
+            return `native pong: ${message}`;
+          },
+        });
+        el.classList.add("ok");
+        log("native_ping: registered");
+      } catch (e) {
+        el.classList.add("bad");
+        log(`native_ping: registerTool FAILED -> ${e.name}: ${e.message}`);
+      }
+
+      // Poll the tool list for a few seconds so extension-registered tools show up too.
+      if (typeof mc.getTools === "function") {
+        for (let i = 0; i < 10; i++) {
+          try {
+            const names = (await mc.getTools()).map((t) => t.name).sort();
+            lines[lines.length - (lines[lines.length - 1].startsWith("getTools") ? 1 : 0)] = `getTools(): ${names.join(", ") || "(none)"}`;
+            el.textContent = lines.join("\n");
+          } catch (e) { log(`getTools() threw: ${e.name}: ${e.message}`); break; }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      } else {
+        log("getTools(): not available on this host");
+      }
+    })();
+  </script>
+</body>
+</html>

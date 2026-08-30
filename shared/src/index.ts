@@ -90,9 +90,24 @@ export type RecipeAction =
   | { kind: "scroll"; selector?: string; to?: "top" | "bottom" }
   | { kind: "navigate"; url: string }
   | { kind: "wait"; ms?: number; selector?: string }
-  | { kind: "read"; selector: string; attribute?: string; all?: boolean; as?: string }
-  | { kind: "media"; selector?: string; op: "play" | "pause" | "toggle" | "seek" | "rate" | "volume" | "mute"; value?: number }
+  | {
+      kind: "read"; selector: string; attribute?: string; all?: boolean; as?: string;
+      /** Read the next N <p> blocks after the match (stops at the next same-level heading). */
+      following?: number;
+      /** Cap for `all`/`following` results (1..50); a string allows "{{param}}". */
+      limit?: number | string;
+    }
+  | {
+      kind: "media"; selector?: string;
+      op: "play" | "pause" | "toggle" | "seek" | "rate" | "volume" | "mute" | "state";
+      /** A string allows "{{param}}" substitution. */
+      value?: number | string;
+      /** For `seek`: offset from currentTime instead of absolute seconds. */
+      relative?: boolean;
+    }
   | { kind: "js"; fn: string };
+// Selector strings also accept `base:text=words` and `base:nth=N` pseudo-syntax, and templates accept
+// the builtins {{$origin}}, {{$host}}, {{$pathname}}, {{$href}}, {{$repo}} — see recipes/README.md.
 // `js` is reserved for first-party bundled recipes only; the extension refuses it for remote recipes.
 
 export interface RecipeTool {

@@ -1,0 +1,121 @@
+{
+  "id": "wikipedia",
+  "name": "Wikipedia",
+  "description": "Search Wikipedia, navigate article sections, and read section text and infoboxes.",
+  "version": 1,
+  "matches": ["*://*.wikipedia.org/*"],
+  "author": "WebMCP Anywhere",
+  "tools": [
+    {
+      "name": "wiki_search",
+      "title": "Search Wikipedia",
+      "description": "Search Wikipedia (same language edition as the current page) for a query. If there is an exact article title match Wikipedia opens that article directly, otherwise a search results page opens. The page reloads. Returns the URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Article title or search terms." }
+        },
+        "required": ["query"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/w/index.php?search={{query}}" }
+      ]
+    },
+    {
+      "name": "wiki_article",
+      "title": "Article summary",
+      "description": "Read the current Wikipedia article's `title`, its `url`, and the `summary` (up to 3 lead paragraphs before the first section heading). Read-only.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "h1#firstHeading", "as": "title" },
+        { "kind": "read", "selector": "link[rel=canonical]", "attribute": "href", "as": "url" },
+        { "kind": "read", "selector": "#mw-content-text .mw-parser-output > p:not(.mw-empty-elt)", "all": true, "limit": 3, "as": "summary" }
+      ]
+    },
+    {
+      "name": "wiki_sections",
+      "title": "List sections",
+      "description": "List the top-level section headings (h2) of the current Wikipedia article, in page order. Returns `sections` (array of heading strings) to pass to wiki_open_section / wiki_read_section.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "#mw-content-text .mw-heading2 h2, #mw-content-text h2 .mw-headline", "all": true, "as": "sections" }
+      ]
+    },
+    {
+      "name": "wiki_open_section",
+      "title": "Scroll to section",
+      "description": "Scroll the current Wikipedia article to the section whose heading contains the given text (case-insensitive; exact matches preferred). Returns the matched `heading` and the first 2 paragraphs of the section in `preview`.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "heading": { "type": "string", "description": "Section heading text, e.g. \"History\" (from wiki_sections)." }
+        },
+        "required": ["heading"]
+      },
+      "actions": [
+        { "kind": "scroll", "selector": "#mw-content-text h2:text={{heading}}" },
+        { "kind": "read", "selector": "#mw-content-text h2:text={{heading}}", "as": "heading" },
+        { "kind": "read", "selector": "#mw-content-text h2:text={{heading}}", "following": 2, "as": "preview" }
+      ]
+    },
+    {
+      "name": "wiki_read_section",
+      "title": "Read section",
+      "description": "Read the text of a section of the current Wikipedia article by heading (case-insensitive contains match on h2 headings). Returns `heading` and `paragraphs` (array of paragraph strings from the section, including its subsections, up to `paragraphs` count, default 8). Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "heading": { "type": "string", "description": "Section heading text, e.g. \"Early life\" (from wiki_sections)." },
+          "paragraphs": { "type": "integer", "description": "Maximum number of paragraphs to read (1-50).", "default": 8, "minimum": 1, "maximum": 50 }
+        },
+        "required": ["heading"]
+      },
+      "actions": [
+        { "kind": "read", "selector": "#mw-content-text h2:text={{heading}}", "as": "heading" },
+        { "kind": "read", "selector": "#mw-content-text h2:text={{heading}}", "following": 50, "limit": "{{paragraphs}}", "as": "paragraphs" }
+      ]
+    },
+    {
+      "name": "wiki_infobox",
+      "title": "Read infobox",
+      "description": "Read the infobox (the fact table at the top right of many Wikipedia articles). Returns `rows` (array of strings; each is a label followed by its value, e.g. \"Capital Paris\") and the infobox `caption`. Returns rows = [] if the article has no infobox. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": ".infobox caption, .infobox .infobox-title", "as": "caption" },
+        { "kind": "read", "selector": ".infobox tr:has(th):has(td)", "all": true, "as": "rows" }
+      ]
+    },
+    {
+      "name": "wiki_links",
+      "title": "List article links",
+      "description": "List internal article links from the body of the current Wikipedia article (first N in page order). Returns `titles` and `urls` arrays. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum links to return (1-50).", "default": 25, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "read", "selector": "#mw-content-text .mw-parser-output p a[href^='/wiki/']:not([href*=':'])", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": "#mw-content-text .mw-parser-output p a[href^='/wiki/']:not([href*=':'])", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" }
+      ]
+    },
+    {
+      "name": "wiki_random",
+      "title": "Random article",
+      "description": "Open a random Wikipedia article (Special:Random). The page reloads; call wiki_article afterwards to read it. Returns the URL that was requested.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/wiki/Special:Random" }
+      ]
+    }
+  ]
+}

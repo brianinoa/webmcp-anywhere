@@ -1,0 +1,145 @@
+{
+  "id": "github",
+  "name": "GitHub",
+  "description": "Navigate GitHub repositories: switch tabs, search code, open files, list issues and pull requests.",
+  "version": 1,
+  "matches": ["*://github.com/*"],
+  "author": "WebMCP Anywhere",
+  "tools": [
+    {
+      "name": "gh_repo",
+      "title": "Current repository",
+      "description": "Read which GitHub repository the current page belongs to. Returns `repo` (\"owner/name\"), `description`, `stars`, `default_branch_or_ref` (from the branch picker, if visible) and `url`. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "meta[name='octolytics-dimension-repository_nwo']", "attribute": "content", "as": "repo" },
+        { "kind": "read", "selector": "p.f4.my-3, [data-pjax='#repo-content-pjax-container'] p, .Layout-sidebar p", "as": "description" },
+        { "kind": "read", "selector": "#repo-stars-counter-star", "attribute": "title", "as": "stars" },
+        { "kind": "read", "selector": "#branch-picker-repos-header-ref-selector, [data-hotkey='w'] span, #branch-select-menu summary span.css-truncate-target", "as": "default_branch_or_ref" },
+        { "kind": "read", "selector": "link[rel=canonical]", "attribute": "href", "as": "url" }
+      ]
+    },
+    {
+      "name": "gh_switch_tab",
+      "title": "Switch repository tab",
+      "description": "Switch to a tab of the current GitHub repository: code, issues, pull-requests, actions, projects, wiki, security, or pulse. Navigates within the repo (page updates). Returns the resulting page `title`.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tab": { "type": "string", "enum": ["code", "issues", "pull-requests", "actions", "projects", "wiki", "security", "pulse", "discussions"], "description": "Which repository tab to open. Use \"pull-requests\" for PRs." }
+        },
+        "required": ["tab"]
+      },
+      "actions": [
+        { "kind": "click", "selector": "#{{tab}}-tab" },
+        { "kind": "wait", "ms": 1500 },
+        { "kind": "read", "selector": "title", "as": "title" }
+      ]
+    },
+    {
+      "name": "gh_search_repo",
+      "title": "Search in repository",
+      "description": "Search code, issues and more within the current GitHub repository (owner/name derived from the URL). Navigates to GitHub's search results page scoped to this repo; call gh_search_results afterwards to read the hits. Returns the URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search terms or GitHub search syntax, e.g. \"registerTool path:src\"." }
+        },
+        "required": ["query"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/{{$repo}}/search?q={{query}}" }
+      ]
+    },
+    {
+      "name": "gh_search_results",
+      "title": "Read search results",
+      "description": "On a GitHub search results page, read the result list. Returns `titles` (file paths or issue titles) and `urls` arrays in on-page order. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum results to return (1-50).", "default": 20, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "wait", "selector": "[data-testid='results-list'] a, .search-title a, div[data-testid='results-list'] h3 a", "ms": 5000 },
+        { "kind": "read", "selector": "[data-testid='results-list'] h3 a, [data-testid='results-list'] .search-title a, .search-title a", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": "[data-testid='results-list'] h3 a, [data-testid='results-list'] .search-title a, .search-title a", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" }
+      ]
+    },
+    {
+      "name": "gh_open_file",
+      "title": "Open file",
+      "description": "Open a file from the current GitHub repository at its default branch (HEAD) by path, e.g. \"src/index.ts\" or \"README.md\". Navigates to the blob view. Returns the URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "File path relative to the repository root, e.g. \"packages/core/src/index.ts\"." }
+        },
+        "required": ["path"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/{{$repo}}/blob/HEAD/{{path}}" }
+      ]
+    },
+    {
+      "name": "gh_list_files",
+      "title": "List files in current directory",
+      "description": "On a GitHub repository code or tree page, list the entries of the directory being shown. Returns `names` (file/folder names) and `urls`. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "table[aria-labelledby='folders-and-files'] .react-directory-filename-column a, .react-directory-row a.Link--primary, .js-navigation-item .js-navigation-open", "all": true, "as": "names" },
+        { "kind": "read", "selector": "table[aria-labelledby='folders-and-files'] .react-directory-filename-column a, .react-directory-row a.Link--primary, .js-navigation-item .js-navigation-open", "attribute": "href", "all": true, "as": "urls" }
+      ]
+    },
+    {
+      "name": "gh_read_file",
+      "title": "Read file contents",
+      "description": "On a GitHub blob (file) page, read the file's `path` and its text `content` (first 50 lines are guaranteed; long files are truncated by the page's virtualised viewer). Read-only.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "#file-name-id, #file-name-id-wide, .final-path", "as": "path" },
+        { "kind": "read", "selector": "#read-only-cursor-text-area, textarea[aria-label='file content'], table.highlight", "as": "content" }
+      ]
+    },
+    {
+      "name": "gh_list_issues",
+      "title": "List issues or pull requests",
+      "description": "On a GitHub issues or pull requests list page, read the visible items. Returns parallel arrays `titles` and `urls` (index 1 = first). Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum items to return (1-50).", "default": 25, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "read", "selector": "a[data-testid='issue-pr-title-link'], .js-issue-row a.Link--primary, [data-hovercard-type='issue'] a, a.js-navigation-open[id^='issue_']", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": "a[data-testid='issue-pr-title-link'], .js-issue-row a.Link--primary, [data-hovercard-type='issue'] a, a.js-navigation-open[id^='issue_']", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" }
+      ]
+    },
+    {
+      "name": "gh_open_issue",
+      "title": "Open issue/PR by number",
+      "description": "Open an issue or pull request of the current repository by its number (GitHub redirects /issues/N to /pull/N when it is a PR). Navigates. Returns the URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "number": { "type": "integer", "description": "Issue or pull request number, e.g. 42.", "minimum": 1 }
+        },
+        "required": ["number"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/{{$repo}}/issues/{{number}}" }
+      ]
+    }
+  ]
+}

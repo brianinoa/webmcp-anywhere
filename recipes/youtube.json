@@ -1,0 +1,238 @@
+{
+  "id": "youtube",
+  "name": "YouTube",
+  "description": "Search, open, and control playback of YouTube videos.",
+  "version": 1,
+  "matches": ["*://*.youtube.com/*"],
+  "author": "WebMCP Anywhere",
+  "tools": [
+    {
+      "name": "yt_search",
+      "title": "Search YouTube",
+      "description": "Navigate to the YouTube search results page for a query. The page will reload; afterwards call yt_play_result with an index (1 = first result) to open a video. Returns the results URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search terms, e.g. \"lofi hip hop radio\"." }
+        },
+        "required": ["query"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/results?search_query={{query}}" }
+      ]
+    },
+    {
+      "name": "yt_list_results",
+      "title": "List search results",
+      "description": "On a YouTube search results page, read the visible video results. Returns `titles` (array, in on-page order, index 1 = first), `urls` (matching watch URLs) and `channels`. Use the 1-based position with yt_play_result.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum number of results to return (1-50).", "default": 10, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "wait", "selector": "ytd-video-renderer a#video-title, a#video-title-link", "ms": 5000 },
+        { "kind": "read", "selector": "ytd-video-renderer a#video-title, a#video-title-link", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": "ytd-video-renderer a#video-title, a#video-title-link", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" },
+        { "kind": "read", "selector": "ytd-video-renderer ytd-channel-name a, ytd-video-renderer ytd-channel-name yt-formatted-string", "all": true, "limit": "{{limit}}", "as": "channels" }
+      ]
+    },
+    {
+      "name": "yt_play_result",
+      "title": "Open a search result",
+      "description": "On a YouTube search results page, click the N-th video result (1 = first) to open its watch page. The page navigates to the video and starts playing. Returns the clicked title in `did`.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer", "description": "1-based position of the result to open.", "minimum": 1, "default": 1 }
+        },
+        "required": ["index"]
+      },
+      "actions": [
+        { "kind": "wait", "selector": "ytd-video-renderer a#video-title, a#video-title-link", "ms": 5000 },
+        { "kind": "click", "selector": "ytd-video-renderer a#video-title, a#video-title-link:nth={{index}}" }
+      ]
+    },
+    {
+      "name": "yt_play",
+      "title": "Play",
+      "description": "Start (or resume) playback of the current YouTube video. Returns the player `media` state: {paused, currentTime, duration, playbackRate, volume, muted}.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "play" }
+      ]
+    },
+    {
+      "name": "yt_pause",
+      "title": "Pause",
+      "description": "Pause the current YouTube video. Returns the player `media` state: {paused, currentTime, duration, playbackRate, volume, muted}.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "pause" }
+      ]
+    },
+    {
+      "name": "yt_toggle_play",
+      "title": "Play/pause",
+      "description": "Toggle between playing and paused for the current YouTube video. Returns the resulting `media` state.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "toggle" }
+      ]
+    },
+    {
+      "name": "yt_seek",
+      "title": "Seek to time",
+      "description": "Jump to an absolute position in the current YouTube video, in seconds from the start (clamped to the video duration). Returns the `media` state including the new currentTime.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "seconds": { "type": "number", "description": "Absolute position in seconds, e.g. 90 for 1:30.", "minimum": 0 }
+        },
+        "required": ["seconds"]
+      },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "seek", "value": "{{seconds}}" }
+      ]
+    },
+    {
+      "name": "yt_skip",
+      "title": "Skip forward/back",
+      "description": "Skip relative to the current position of the YouTube video. Positive seconds skip forward, negative seconds rewind (e.g. -10). Returns the `media` state including the new currentTime.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "seconds": { "type": "number", "description": "Offset in seconds; negative to rewind.", "default": 10 }
+        },
+        "required": ["seconds"]
+      },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "seek", "value": "{{seconds}}", "relative": true }
+      ]
+    },
+    {
+      "name": "yt_set_speed",
+      "title": "Set playback speed",
+      "description": "Set the playback rate of the current YouTube video (1 = normal, 1.5, 2, 0.5 ...). Returns the `media` state including playbackRate.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rate": { "type": "number", "description": "Playback rate multiplier between 0.25 and 4.", "minimum": 0.25, "maximum": 4 }
+        },
+        "required": ["rate"]
+      },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "rate", "value": "{{rate}}" }
+      ]
+    },
+    {
+      "name": "yt_set_volume",
+      "title": "Set volume",
+      "description": "Set the player volume of the current YouTube video, 0 (silent) to 1 (full). Unmutes if volume > 0. Returns the `media` state.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "volume": { "type": "number", "description": "Volume from 0 to 1.", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["volume"]
+      },
+      "actions": [
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "volume", "value": "{{volume}}" }
+      ]
+    },
+    {
+      "name": "yt_toggle_mute",
+      "title": "Mute/unmute",
+      "description": "Toggle mute on the current YouTube video. Returns the `media` state including `muted`.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": ".ytp-mute-button" },
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "state" }
+      ]
+    },
+    {
+      "name": "yt_toggle_captions",
+      "title": "Toggle captions",
+      "description": "Toggle closed captions/subtitles on the current YouTube video by clicking the CC button. Returns `captions_on` (\"true\"/\"false\" from the button's aria-pressed attribute).",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": ".ytp-subtitles-button" },
+        { "kind": "read", "selector": ".ytp-subtitles-button", "attribute": "aria-pressed", "as": "captions_on" }
+      ]
+    },
+    {
+      "name": "yt_toggle_fullscreen",
+      "title": "Toggle fullscreen",
+      "description": "Toggle fullscreen mode for the YouTube player by clicking the fullscreen button. Returns the button's current label in `button` (e.g. \"Full screen\" or \"Exit full screen\").",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": ".ytp-fullscreen-button" },
+        { "kind": "read", "selector": ".ytp-fullscreen-button", "attribute": "title", "as": "button" }
+      ]
+    },
+    {
+      "name": "yt_toggle_theater",
+      "title": "Toggle theater mode",
+      "description": "Toggle theater (wide) mode for the YouTube player. Returns the size button's current label in `button`.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": ".ytp-size-button" },
+        { "kind": "read", "selector": ".ytp-size-button", "attribute": "title", "as": "button" }
+      ]
+    },
+    {
+      "name": "yt_next",
+      "title": "Next video",
+      "description": "Skip to the next video (autoplay/playlist next) by clicking the player's Next button. The page navigates to the next video. Returns the run log in `did`.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": ".ytp-next-button" }
+      ]
+    },
+    {
+      "name": "yt_now_playing",
+      "title": "Now playing",
+      "description": "Read what is currently playing on the YouTube watch page. Returns `title`, `channel`, `url` and the player `media` state {paused, currentTime, duration, playbackRate, volume, muted}. Does not change playback.",
+      "sensitivity": "read",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "read", "selector": "h1.ytd-watch-metadata yt-formatted-string, #title h1, h1.title", "as": "title" },
+        { "kind": "read", "selector": "ytd-watch-metadata #owner ytd-channel-name a, #owner #channel-name a, ytd-channel-name a", "as": "channel" },
+        { "kind": "read", "selector": "link[rel=canonical]", "attribute": "href", "as": "url" },
+        { "kind": "media", "selector": "video.html5-main-video, video", "op": "state" }
+      ]
+    },
+    {
+      "name": "yt_related",
+      "title": "List related videos",
+      "description": "On a YouTube watch page, list the related/up-next videos in the sidebar. Returns `titles` and `urls` arrays (index 1 = first). Use yt_open_url or navigate to play one.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum number of related videos (1-50).", "default": 10, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "read", "selector": "ytd-compact-video-renderer #video-title, yt-lockup-view-model a.yt-lockup-metadata-view-model__title", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": "ytd-compact-video-renderer a#thumbnail, yt-lockup-view-model a.yt-lockup-metadata-view-model__title", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebMCP Anywhere</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { width: 360px; margin: 0; padding: 12px 14px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      h1 { font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+      h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; margin: 14px 0 6px; }
+      .status { font-size: 12px; opacity: .8; margin-bottom: 4px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+      label { display: flex; align-items: center; gap: 8px; }
+      input[type="text"] { width: 100%; padding: 5px 7px; font: inherit; border-radius: 6px; border: 1px solid #8884; }
+      .tool { display: flex; gap: 6px; align-items: center; padding: 2px 0; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+      .tool .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .chip { font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 600; text-transform: uppercase; background: #8883; }
+      .chip.sensitive { background: #f8717133; } .chip.write { background: #fbbf2433; } .chip.read { background: #4ade8033; }
+      .log { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; }
+      .entry { background: #8881; border-radius: 6px; padding: 4px 7px; font-size: 11.5px; }
+      .entry .t { font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+      .entry .d { opacity: .7; font-size: 10.5px; margin-left: 6px; }
+      .entry .b { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; opacity: .85; white-space: pre-wrap; word-break: break-word; }
+      .empty { opacity: .6; font-style: italic; }
+      button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid #8886; background: #8882; cursor: pointer; }
+      .muted { opacity: .65; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <h1><img src="icons/icon16.png" width="16" height="16" alt="" /> WebMCP Anywhere</h1>
+    <div class="status" id="status">Loading…</div>
+
+    <h2>Settings</h2>
+    <div class="row"><label style="flex:1;flex-direction:column;align-items:stretch">Worker API base<input type="text" id="apiBase" placeholder="http://localhost:8787" /></label></div>
+    <div class="row"><label><input type="checkbox" id="approveSensitive" /> Ask before running sensitive tools</label></div>
+    <div class="row"><label><input type="checkbox" id="approveWrites" /> Also ask before write tools (click, fill…)</label></div>
+    <div class="row"><label><input type="checkbox" id="showBadge" /> Show in-page badge</label></div>
+    <div class="row"><button id="sync">Sync recipes now</button><span class="muted" id="syncInfo"></span></div>
+
+    <h2>Tools on this tab <span id="toolCount"></span></h2>
+    <div id="tools"></div>
+
+    <h2>Recent calls</h2>
+    <div class="log" id="log"></div>
+
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>

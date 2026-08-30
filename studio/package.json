@@ -1,0 +1,26 @@
+{
+  "name": "@webmcp-anywhere/studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WebMCP Anywhere — Recipe Studio: author, test, and share per-site WebMCP tool recipes.",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@webmcp-anywhere/shared": "workspace:*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.6.0",
+    "vite": "^8.2.2"
+  }
+}

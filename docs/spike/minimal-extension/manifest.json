@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "WMA Spike: WebMCP ping",
+  "version": "0.0.1",
+  "description": "Day-1 spike. Registers wma_ping and read_headings via document.modelContext from a MAIN-world content script on every page. No build step.",
+  "minimum_chrome_version": "111",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["main.js"],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

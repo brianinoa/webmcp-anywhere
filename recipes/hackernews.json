@@ -1,0 +1,109 @@
+{
+  "id": "hackernews",
+  "name": "Hacker News",
+  "description": "Browse Hacker News stories and comments.",
+  "version": 1,
+  "matches": ["*://news.ycombinator.com/*"],
+  "author": "WebMCP Anywhere",
+  "tools": [
+    {
+      "name": "hn_top_stories",
+      "title": "List stories",
+      "description": "List the stories on the current Hacker News page (front page, /newest, /ask, etc.) in on-page order. Returns parallel arrays `titles`, `urls` (external article links), `sites` (source domains) and `scores` (e.g. \"123 points\"; job postings have no score so `scores` may be shorter). Index 1 = first story; use it with hn_open_story / hn_open_comments. Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum number of stories to return (1-30 per page).", "default": 30, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "read", "selector": ".athing .titleline > a", "all": true, "limit": "{{limit}}", "as": "titles" },
+        { "kind": "read", "selector": ".athing .titleline > a", "attribute": "href", "all": true, "limit": "{{limit}}", "as": "urls" },
+        { "kind": "read", "selector": ".athing .titleline .sitestr", "all": true, "limit": "{{limit}}", "as": "sites" },
+        { "kind": "read", "selector": ".subtext .score", "all": true, "limit": "{{limit}}", "as": "scores" }
+      ]
+    },
+    {
+      "name": "hn_open_story",
+      "title": "Open story link",
+      "description": "Open the N-th story's article link (1 = first on the page) in the current tab. The page navigates to the external article. Returns the clicked title in `did`.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer", "description": "1-based position of the story on the page.", "minimum": 1 }
+        },
+        "required": ["index"]
+      },
+      "actions": [
+        { "kind": "read", "selector": ".athing .titleline > a:nth={{index}}", "as": "title" },
+        { "kind": "read", "selector": ".athing .titleline > a:nth={{index}}", "attribute": "href", "as": "url" },
+        { "kind": "click", "selector": ".athing .titleline > a:nth={{index}}" }
+      ]
+    },
+    {
+      "name": "hn_open_comments",
+      "title": "Open comments",
+      "description": "Open the Hacker News comment thread for the N-th story (1 = first on the page). The page navigates to the item page. Returns `title` and the comments `url`. Note: job postings have no comments link, so on pages with jobs the index may be offset by one.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer", "description": "1-based position of the story on the page.", "minimum": 1 }
+        },
+        "required": ["index"]
+      },
+      "actions": [
+        { "kind": "read", "selector": ".athing .titleline > a:nth={{index}}", "as": "title" },
+        { "kind": "read", "selector": ".subtext .subline > a:last-of-type:nth={{index}}", "attribute": "href", "as": "url" },
+        { "kind": "click", "selector": ".subtext .subline > a:last-of-type:nth={{index}}" }
+      ]
+    },
+    {
+      "name": "hn_read_comments",
+      "title": "Read comments",
+      "description": "On a Hacker News item page, read the story `title`, `url`, and the first N comments as `comments` (array of strings, in thread order; nested replies are included in order). Read-only.",
+      "sensitivity": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Maximum number of comments to return (1-50).", "default": 20, "minimum": 1, "maximum": 50 }
+        }
+      },
+      "actions": [
+        { "kind": "read", "selector": ".fatitem .titleline > a", "as": "title" },
+        { "kind": "read", "selector": ".fatitem .titleline > a", "attribute": "href", "as": "url" },
+        { "kind": "read", "selector": ".fatitem .toptext", "as": "text" },
+        { "kind": "read", "selector": ".comment-tree .commtext", "all": true, "limit": "{{limit}}", "as": "comments" },
+        { "kind": "read", "selector": ".comment-tree .hnuser", "all": true, "limit": "{{limit}}", "as": "authors" }
+      ]
+    },
+    {
+      "name": "hn_next_page",
+      "title": "Next page",
+      "description": "Go to the next page of stories by clicking the \"More\" link at the bottom of the list. The page reloads. Returns the run log in `did`.",
+      "sensitivity": "write",
+      "inputSchema": { "type": "object", "properties": {} },
+      "actions": [
+        { "kind": "click", "selector": "a.morelink" }
+      ]
+    },
+    {
+      "name": "hn_go",
+      "title": "Switch listing",
+      "description": "Navigate to a Hacker News listing: front (top stories), newest, ask, show, jobs, or best. The page reloads. Returns the URL that was opened.",
+      "sensitivity": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "listing": { "type": "string", "enum": ["news", "newest", "ask", "show", "jobs", "best"], "description": "Which listing to open (\"news\" is the front page)." }
+        },
+        "required": ["listing"]
+      },
+      "actions": [
+        { "kind": "navigate", "url": "{{$origin}}/{{listing}}" }
+      ]
+    }
+  ]
+}

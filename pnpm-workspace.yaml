@@ -3,3 +3,6 @@ packages:
   - studio
   - worker
   - shared
+allowBuilds:
+  esbuild: true
+  workerd: true

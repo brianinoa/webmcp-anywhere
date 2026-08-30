@@ -19,5 +19,6 @@ A Chrome extension that retrofits WebMCP tools (`document.modelContext.registerT
 - Tools return short, structured strings/JSON the agent can verify against (what changed, current state).
 - Recipes are declarative JSON actions; never ship arbitrary JS in remote recipes.
 - Keep packages independent: `pnpm --filter <pkg> build|dev|typecheck` must work per package.
+- Deploy with `pnpm --filter @webmcp-anywhere/worker run deploy` (the `run` matters: bare `pnpm deploy` is a pnpm built-in). The predeploy step regenerates `worker/src/seed.ts` from `recipes/*.json`; after adding a recipe, hit `/api/seed?force=1` to push it into KV. Live URL: https://webmcp-anywhere.briandaniloinoa.workers.dev
 - No copyrighted media or third-party logos in anything that ends up in the demo video.
 - Commit only when asked. Don't push.

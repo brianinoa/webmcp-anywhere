@@ -1,0 +1,16 @@
+{
+  "name": "webmcp-anywhere",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bring WebMCP tools to every website: a Chrome extension that retrofits structured agent tools onto any page, plus a Recipe Studio for authoring and sharing per-site tool recipes.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.5.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:studio": "pnpm --filter @webmcp-anywhere/studio dev",
+    "dev:worker": "pnpm --filter @webmcp-anywhere/worker dev",
+    "build:extension": "pnpm --filter @webmcp-anywhere/extension build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

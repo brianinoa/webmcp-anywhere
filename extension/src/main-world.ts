@@ -98,9 +98,15 @@ async function invoke(
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     const durationMs = Math.round(performance.now() - started);
+    console.error(`[WebMCP Anywhere] tool "${name}" failed:`, err);
     postToIsolated({ type: "tool-result", callId, ok: false, error, durationMs });
     throw err instanceof Error ? err : new Error(error);
   }
+}
+
+/** Shipped Chrome builds may call execute(input) with no options object; always yield a usable signal. */
+function signalOf(options: { signal?: AbortSignal } | undefined): AbortSignal {
+  return options?.signal ?? new AbortController().signal;
 }
 
 /** Chrome may hand us a JSON string instead of an object; normalise. */
@@ -150,7 +156,7 @@ function genericToTool(def: GenericToolDef): ModelContextTool {
     description: def.description,
     inputSchema: def.inputSchema,
     annotations: { readOnlyHint: def.readOnlyHint, untrustedContentHint: def.untrustedContentHint },
-    execute: (input, { signal }) => invoke(def.name, def.sensitivity, parseInput(input), signal, def.run),
+    execute: (input, options) => invoke(def.name, def.sensitivity, parseInput(input), signalOf(options), def.run),
   };
 }
 
@@ -165,8 +171,8 @@ function recipeToTool(recipe: Recipe, tool: RecipeTool): ModelContextTool {
       readOnlyHint: isRead,
       untrustedContentHint: tool.actions.some((a) => a.kind === "read"),
     },
-    execute: (input, { signal }) =>
-      invoke(tool.name, tool.sensitivity, parseInput(input), signal, (inp, sig) =>
+    execute: (input, options) =>
+      invoke(tool.name, tool.sensitivity, parseInput(input), signalOf(options), (inp, sig) =>
         // The ISOLATED world strips `js` actions from remote recipes, so anything
         // that still carries one here came from the bundled first-party set.
         runRecipeTool(tool, inp, sig, { allowJs: true }),

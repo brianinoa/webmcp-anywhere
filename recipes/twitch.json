@@ -239,7 +239,7 @@
       },
       "actions": [
         { "kind": "read", "selector": ".chat-line__message .chat-author__display-name, [data-a-target=\"chat-message-username\"]", "all": true, "limit": "{{limit}}", "as": "authors" },
-        { "kind": "read", "selector": ".chat-line__message [data-a-target=\"chat-line-message-body\"], .chat-line__message .chat-line__message-container", "all": true, "limit": "{{limit}}", "as": "messages" }
+        { "kind": "read", "selector": ".chat-line__message [data-a-target=\"chat-line-message-body\"]", "all": true, "limit": "{{limit}}", "as": "messages" }
       ]
     },
     {

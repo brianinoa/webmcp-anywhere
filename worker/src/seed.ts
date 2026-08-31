@@ -975,7 +975,7 @@ export const SEED_RECIPES: Recipe[] = [
           },
           {
             "kind": "read",
-            "selector": ".chat-line__message [data-a-target=\"chat-line-message-body\"], .chat-line__message .chat-line__message-container",
+            "selector": ".chat-line__message [data-a-target=\"chat-line-message-body\"]",
             "all": true,
             "limit": "{{limit}}",
             "as": "messages"

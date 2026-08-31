@@ -528,6 +528,11 @@ main.container {
   flex-wrap: wrap;
   align-items: center;
 }
+.readonly-note {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: default;
+}
 .meta {
   display: flex;
   gap: 1rem;

@@ -132,6 +132,11 @@ export interface Recipe {
   tools: RecipeTool[];
   createdAt?: string;
   updatedAt?: string;
+  /**
+   * Response-only: set by the server for protected first-party recipes that cannot be
+   * modified or deleted via the API. Never persisted; the studio hides Edit/Delete when true.
+   */
+  readOnly?: boolean;
 }
 
 // ---------------------------------------------------------------------------

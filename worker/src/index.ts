@@ -7,6 +7,11 @@ import { normalizeRecipe, shortId, slugify, validateRecipe } from "./validate";
 /** First-party recipe ids are read-only over the API so nobody can poison what everyone syncs. */
 const PROTECTED_IDS = new Set(SEED_RECIPES.map((r) => r.id));
 
+/** Tag a recipe as read-only in responses when its id is protected (never persisted). */
+function withReadOnly(r: Recipe): Recipe {
+  return PROTECTED_IDS.has(r.id) ? { ...r, readOnly: true } : r;
+}
+
 /** Headers every non-API (studio asset) response gets so the studio is a WebMCP-capable origin. */
 const WEBMCP_HEADERS: Record<string, string> = {
   "Origin-Agent-Cluster": "?1",
@@ -82,7 +87,7 @@ async function handleApi(request: Request, url: URL, env: Env, ctx: ExecutionCon
     const since = url.searchParams.get("since");
     if (since && Number.isNaN(Date.parse(since))) return json(request, { error: "since: must be an ISO timestamp" }, 400);
     const recipes = await store.updatedSince(since);
-    const body: SyncResponse = { recipes: sortByName(recipes), serverTime: new Date().toISOString() };
+    const body: SyncResponse = { recipes: sortByName(recipes).map(withReadOnly), serverTime: new Date().toISOString() };
     return json(request, body);
   }
 
@@ -100,7 +105,7 @@ async function handleApi(request: Request, url: URL, env: Env, ctx: ExecutionCon
         const siteUrl = /^[a-z]+:\/\//i.test(site) ? site : `https://${site}`;
         recipes = recipes.filter((r) => r.matches.some((p) => matchesPattern(p, siteUrl)));
       }
-      const body: ListRecipesResponse = { recipes: sortByName(recipes) };
+      const body: ListRecipesResponse = { recipes: sortByName(recipes).map(withReadOnly) };
       return json(request, body);
     }
     if (method === "POST") {
@@ -126,7 +131,7 @@ async function handleApi(request: Request, url: URL, env: Env, ctx: ExecutionCon
   if (method === "GET") {
     await seedIfEmpty(store);
     const recipe = await store.get(id);
-    return recipe ? json(request, recipe) : json(request, { error: "Not found" }, 404);
+    return recipe ? json(request, withReadOnly(recipe)) : json(request, { error: "Not found" }, 404);
   }
   if ((method === "PUT" || method === "DELETE") && PROTECTED_IDS.has(id)) {
     return json(request, { error: `"${id}" is a protected first-party recipe and cannot be modified` }, 403);

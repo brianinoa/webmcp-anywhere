@@ -62,12 +62,20 @@ export function RecipeDetail() {
           <button className="btn" onClick={() => copy(JSON.stringify(recipe, null, 2))}>
             {copied ? "Copied" : "Copy as JSON"}
           </button>
-          <Link className="btn btn-primary" to={`/recipes/${encodeURIComponent(recipe.id)}/edit`}>
-            Edit
-          </Link>
-          <button className="btn danger" onClick={onDelete} disabled={deleting}>
-            {deleting ? "Deleting…" : "Delete"}
-          </button>
+          {recipe.readOnly ? (
+            <span className="muted readonly-note" title="Built-in recipes ship with the extension and can't be changed here.">
+              🔒 First-party · read-only
+            </span>
+          ) : (
+            <>
+              <Link className="btn btn-primary" to={`/recipes/${encodeURIComponent(recipe.id)}/edit`}>
+                Edit
+              </Link>
+              <button className="btn danger" onClick={onDelete} disabled={deleting}>
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </>
+          )}
         </div>
       </header>
 

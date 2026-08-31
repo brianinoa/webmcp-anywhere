@@ -4,17 +4,19 @@
  *  - Mutations: the studio origins, localhost dev servers, and chrome-extension://*.
  */
 const STUDIO_ORIGINS = [
-  /^https:\/\/webmcp-anywhere(\.[a-z0-9-]+)?\.workers\.dev$/,
+  /^https:\/\/webmcp-anywhere\.briandaniloinoa\.workers\.dev$/,
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^chrome-extension:\/\/[a-z]{32}$/,
+  /^chrome-extension:\/\/[a-p]{32}$/,
 ];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function originAllowed(origin: string | null, method: string): boolean {
-  if (!origin) return true; // same-origin or non-browser client
-  if (SAFE_METHODS.has(method)) return true;
+  if (SAFE_METHODS.has(method)) return true; // reads are open, with or without an Origin
+  // Mutations must come from a known browser origin. A missing Origin (curl, server-side
+  // client) is NOT trusted here — otherwise anyone could overwrite the shared library.
+  if (!origin) return false;
   return STUDIO_ORIGINS.some((re) => re.test(origin));
 }
 

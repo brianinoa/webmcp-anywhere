@@ -2,7 +2,7 @@
  * Client-side recipe validation. Mirrors worker/src/validate.ts so the editor
  * can flag problems before saving. Keep the two in sync.
  */
-import type { Recipe, RecipeAction, RecipeTool, Sensitivity } from "@webmcp-anywhere/shared";
+import { RESERVED_TOOL_NAMES, type Recipe, type RecipeAction, type RecipeTool, type Sensitivity } from "@webmcp-anywhere/shared";
 
 export const NAME_RE = /^[A-Za-z0-9_.-]{1,128}$/;
 export const SENSITIVITIES: Sensitivity[] = ["read", "write", "sensitive"];
@@ -52,6 +52,7 @@ function validateAction(a: unknown, path: string, errors: string[]): void {
 export function validateTool(t: unknown, path: string, errors: string[], seen = new Set<string>()): void {
   if (!isObj(t)) return void errors.push(`${path}: must be an object`);
   if (!isStr(t.name) || !NAME_RE.test(t.name)) errors.push(`${path}.name: letters, digits, _ . - only (1-128 chars)`);
+  else if (RESERVED_TOOL_NAMES.has(t.name)) errors.push(`${path}.name: "${t.name}" is a reserved generic tool name`);
   else if (seen.has(t.name)) errors.push(`${path}.name: duplicate tool name "${t.name}"`);
   else seen.add(t.name);
   if (t.title !== undefined && !isStr(t.title)) errors.push(`${path}.title: must be a string`);

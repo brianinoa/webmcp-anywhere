@@ -247,7 +247,9 @@ function safeParse(s: string): unknown {
 export function registerStudioTools(): Promise<void> {
   if (registered) return registered;
   registered = (async () => {
-    const mc = await waitForModelContext(4000);
+    // A capable browser exposes document.modelContext synchronously; only give the
+    // late-attach case a short grace period so plain Chrome doesn't sit on "checking…".
+    const mc = document.modelContext ?? navigator.modelContext ?? (await waitForModelContext(1200));
     if (!mc) {
       setStatus("unavailable");
       return;

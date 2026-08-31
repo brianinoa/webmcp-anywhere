@@ -4,6 +4,9 @@ import { SEED_RECIPES } from "./seed";
 import { RecipeStore } from "./store";
 import { normalizeRecipe, shortId, slugify, validateRecipe } from "./validate";
 
+/** First-party recipe ids are read-only over the API so nobody can poison what everyone syncs. */
+const PROTECTED_IDS = new Set(SEED_RECIPES.map((r) => r.id));
+
 /** Headers every non-API (studio asset) response gets so the studio is a WebMCP-capable origin. */
 const WEBMCP_HEADERS: Record<string, string> = {
   "Origin-Agent-Cluster": "?1",
@@ -124,6 +127,9 @@ async function handleApi(request: Request, url: URL, env: Env, ctx: ExecutionCon
     await seedIfEmpty(store);
     const recipe = await store.get(id);
     return recipe ? json(request, recipe) : json(request, { error: "Not found" }, 404);
+  }
+  if ((method === "PUT" || method === "DELETE") && PROTECTED_IDS.has(id)) {
+    return json(request, { error: `"${id}" is a protected first-party recipe and cannot be modified` }, 403);
   }
   if (method === "PUT") {
     const existing = await store.get(id);

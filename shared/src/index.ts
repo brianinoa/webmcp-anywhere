@@ -218,6 +218,42 @@ export const GENERIC_TOOL_NAMES = [
 
 export type GenericToolName = (typeof GENERIC_TOOL_NAMES)[number];
 
+/** Tool names a recipe may not use — they'd collide with the generic layer. */
+export const RESERVED_TOOL_NAMES: ReadonlySet<string> = new Set(GENERIC_TOOL_NAMES);
+
+const SENSITIVITY_RANK: Record<Sensitivity, number> = { read: 0, write: 1, sensitive: 2 };
+
+/**
+ * The lowest sensitivity an action list actually warrants, regardless of what the
+ * author declared. Any state-changing action is at least "write"; submitting a form
+ * or navigating away is "sensitive". Used to enforce approval on the *real* effect of
+ * a tool so a recipe can't label a writing tool "read" to dodge the approval gate.
+ */
+export function deriveSensitivity(actions: RecipeAction[]): Sensitivity {
+  let rank = 0;
+  for (const a of actions) {
+    if (a.kind === "read" || a.kind === "wait" || a.kind === "scroll") continue;
+    if (a.kind === "media") {
+      rank = Math.max(rank, a.op === "state" ? 0 : 1);
+      continue;
+    }
+    if (a.kind === "js" || (a.kind === "type" && a.submit)) {
+      // Running script or submitting a form is high-consequence.
+      rank = Math.max(rank, SENSITIVITY_RANK.sensitive);
+      continue;
+    }
+    // click, type, select, navigate, and anything else that changes state
+    rank = Math.max(rank, SENSITIVITY_RANK.write);
+  }
+  return (Object.keys(SENSITIVITY_RANK) as Sensitivity[]).find((s) => SENSITIVITY_RANK[s] === rank) ?? "write";
+}
+
+/** The stricter of the author's declared sensitivity and what the actions imply. */
+export function effectiveSensitivity(declared: Sensitivity, actions: RecipeAction[]): Sensitivity {
+  const derived = deriveSensitivity(actions);
+  return SENSITIVITY_RANK[derived] > SENSITIVITY_RANK[declared] ? derived : declared;
+}
+
 /** Chrome match-pattern test used by both the extension loader and studio previews. */
 export function matchesPattern(pattern: string, url: string): boolean {
   if (pattern === "<all_urls>") return /^(https?|file|ftp):/.test(url);

@@ -21,6 +21,7 @@ export function RecipeEditor() {
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
+  const [touched, setTouched] = useState(!isNew); // don't flag a pristine new form before the user types
   const [showHelp, setShowHelp] = useState(false);
   // Remount tool editors when the JSON tab rewrites the recipe wholesale.
   const [formKey, setFormKey] = useState(0);
@@ -56,10 +57,14 @@ export function RecipeEditor() {
     }
   };
 
-  const set = (patch: Partial<Recipe>) => setRecipe((r) => (r ? { ...r, ...patch } : r));
+  const set = (patch: Partial<Recipe>) => {
+    setTouched(true);
+    setRecipe((r) => (r ? { ...r, ...patch } : r));
+  };
   const setTools = (tools: RecipeTool[]) => set({ tools });
 
   const save = async () => {
+    setTouched(true);
     if (!recipe || errors.length || jsonError) return;
     setSaving(true);
     setServerErrors([]);
@@ -87,7 +92,7 @@ export function RecipeEditor() {
   }
   if (!recipe) return <p className="muted">Loading…</p>;
 
-  const allErrors = [...errors, ...serverErrors];
+  const allErrors = [...(touched ? errors : []), ...serverErrors];
 
   return (
     <div className="editor">

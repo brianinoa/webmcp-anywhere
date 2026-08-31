@@ -10,6 +10,7 @@
  */
 import {
   DEFAULT_SETTINGS,
+  effectiveSensitivity,
   matchesPattern,
   waitForModelContext,
   GENERIC_TOOL_NAMES,
@@ -49,7 +50,9 @@ const state = {
 // ---------------------------------------------------------------------------
 
 function needsApproval(sensitivity: Sensitivity): boolean {
-  if (sensitivity === "sensitive") return state.settings.approveSensitive;
+  // "sensitive" always prompts — settings can make the gate stricter, never weaker,
+  // so a forged `settings` message from a hostile page can't disable it.
+  if (sensitivity === "sensitive") return true;
   if (sensitivity === "write") return state.settings.approveWrites;
   return false;
 }
@@ -161,7 +164,10 @@ function genericToTool(def: GenericToolDef): ModelContextTool {
 }
 
 function recipeToTool(recipe: Recipe, tool: RecipeTool): ModelContextTool {
-  const isRead = tool.sensitivity === "read";
+  // Gate on the *effective* sensitivity: a recipe can't label a writing tool "read"
+  // to slip past the approval prompt — the actions it carries set the real floor.
+  const sensitivity = effectiveSensitivity(tool.sensitivity, tool.actions);
+  const isRead = sensitivity === "read";
   return {
     name: tool.name,
     title: tool.title ?? `${recipe.name}: ${tool.name}`,
@@ -172,7 +178,7 @@ function recipeToTool(recipe: Recipe, tool: RecipeTool): ModelContextTool {
       untrustedContentHint: tool.actions.some((a) => a.kind === "read"),
     },
     execute: (input, options) =>
-      invoke(tool.name, tool.sensitivity, parseInput(input), signalOf(options), (inp, sig) =>
+      invoke(tool.name, sensitivity, parseInput(input), signalOf(options), (inp, sig) =>
         // The ISOLATED world strips `js` actions from remote recipes, so anything
         // that still carries one here came from the bundled first-party set.
         runRecipeTool(tool, inp, sig, { allowJs: true }),

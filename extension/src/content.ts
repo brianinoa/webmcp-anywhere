@@ -10,10 +10,12 @@
 import {
   DEFAULT_SETTINGS,
   MSG_NAMESPACE,
+  RESERVED_TOOL_NAMES,
   type ExtensionSettings,
   type MainToIsolated,
   type Recipe,
 } from "@webmcp-anywhere/shared";
+import { validateRecipe } from "./recipes/loader";
 import { createBadge, type Badge } from "./badge";
 import { log, onMainMessage, postToMain, sendRuntime, warn, type RuntimePush, type SyncResult } from "./messaging";
 
@@ -31,15 +33,31 @@ function isRecipe(r: unknown): r is Recipe {
   return !!r && typeof r === "object" && typeof (r as Recipe).id === "string" && Array.isArray((r as Recipe).matches) && Array.isArray((r as Recipe).tools);
 }
 
-/** Remote recipes may never run arbitrary JS: drop any tool that carries a `js` action. */
+/**
+ * Harden recipes that arrive from the (untrusted) worker before they reach the page:
+ *  - re-run the structural validator and drop anything malformed,
+ *  - drop tools carrying `js` actions (only bundled recipes may script the page),
+ *  - drop tools whose name collides with the generic layer.
+ * The worker enforces all of this too; this is defense in depth against a compromised one.
+ */
 function sanitizeRemote(recipes: Recipe[]): Recipe[] {
   return recipes.filter(isRecipe).map((r) => {
     const tools = r.tools.filter((t) => {
-      const hasJs = Array.isArray(t.actions) && t.actions.some((a) => a && a.kind === "js");
-      if (hasJs) warn(`dropping remote recipe tool "${t.name}" from "${r.id}": js actions are only allowed in bundled recipes`);
-      return !hasJs;
+      if (RESERVED_TOOL_NAMES.has(t.name)) {
+        warn(`dropping remote recipe tool "${t.name}" from "${r.id}": reserved generic tool name`);
+        return false;
+      }
+      if (Array.isArray(t.actions) && t.actions.some((a) => a && a.kind === "js")) {
+        warn(`dropping remote recipe tool "${t.name}" from "${r.id}": js actions are only allowed in bundled recipes`);
+        return false;
+      }
+      return true;
     });
     return { ...r, tools };
+  }).filter((r) => {
+    const v = validateRecipe(r);
+    if (!v.ok) warn(`dropping malformed remote recipe "${(r as Recipe).id}":`, v.errors.join("; "));
+    return v.ok;
   });
 }
 

@@ -18,8 +18,9 @@ export function RecipeDetail() {
     setDeleting(true);
     try {
       await api.delete(recipe.id);
-      notifyRecipesChanged();
+      // Navigate away first: notifying while still mounted would refetch the just-deleted id (404 flash).
       navigate("/");
+      notifyRecipesChanged();
     } catch (e) {
       setDeleting(false);
       window.alert(`Delete failed: ${(e as Error).message}`);

@@ -150,6 +150,22 @@ function installRuntimeListener(): void {
   });
 }
 
+/**
+ * Recipe Studio dispatches this DOM event after any recipe mutation (its own
+ * WebMCP tools included). Re-sync immediately so the new recipe reaches every
+ * open tab in seconds instead of waiting for the 10-minute alarm.
+ */
+function installStudioListener(): void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener("webmcp-anywhere:recipes-changed", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      log("studio reported recipe changes; syncing now");
+      sendRuntime({ type: "sync-recipes", force: true }).catch(() => {});
+    }, 500);
+  });
+}
+
 function mountBadge(): void {
   const mount = () => {
     try {
@@ -166,6 +182,7 @@ async function main(): Promise<void> {
   if (window !== window.top) return;
   installMainListener();
   installRuntimeListener();
+  installStudioListener();
   mountBadge();
   await loadSettings();
   await loadRecipes();

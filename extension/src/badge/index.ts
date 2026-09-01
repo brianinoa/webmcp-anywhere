@@ -76,7 +76,9 @@ export function createBadge(opts: { visible: boolean }): Badge {
   toolsHdr.append(el("h4", "", "Tools"));
   const buildBtn = el("button", "small build", "＋ Build recipe");
   buildBtn.title = "Scan this page and draft a WebMCP recipe you can save and edit in Studio";
-  toolsHdr.append(buildBtn);
+  const buildHint = el("span", "small muted build-hint");
+  buildHint.style.display = "none";
+  toolsHdr.append(buildBtn, buildHint);
   toolsSec.append(toolsHdr);
   const draftHost = el("div");
   toolsSec.append(draftHost);
@@ -106,6 +108,9 @@ export function createBadge(opts: { visible: boolean }): Badge {
   let pending = 0;
   let recipeSaver: RecipeSaver | null = null;
   let studioBase = "";
+  // "draft" = an unsaved draft card is open (clear it if a recipe syncs in);
+  // "saved" = the post-save confirmation is showing (keep it — don't wipe it).
+  let draftState: "none" | "draft" | "saved" = "none";
 
   // ---- "Build a recipe from this page" ------------------------------------
   function openDraft() {
@@ -123,6 +128,7 @@ export function createBadge(opts: { visible: boolean }): Badge {
 
   function renderDraftCard(draft: Recipe) {
     draftHost.replaceChildren();
+    draftState = "draft";
     const card = el("div", "draft");
     card.append(el("div", "draft-name", draft.name));
     card.append(el("div", "muted", `${draft.tools.length} tool${draft.tools.length === 1 ? "" : "s"} · review before relying on these`));
@@ -133,7 +139,10 @@ export function createBadge(opts: { visible: boolean }): Badge {
     const btns = el("div", "btns");
     const cancel = el("button", "deny", "Cancel");
     const save = el("button", "approve", "Quick save");
-    cancel.addEventListener("click", () => draftHost.replaceChildren());
+    cancel.addEventListener("click", () => {
+      draftState = "none";
+      draftHost.replaceChildren();
+    });
     save.addEventListener("click", async () => {
       if (!recipeSaver) {
         status.textContent = "Save channel unavailable — reload the page and try again.";
@@ -163,6 +172,7 @@ export function createBadge(opts: { visible: boolean }): Badge {
 
   function renderSaved(saved: Recipe) {
     draftHost.replaceChildren();
+    draftState = "saved";
     const card = el("div", "draft saved");
     card.append(el("div", "draft-name", `Saved as ${saved.id} ✓`));
     card.append(el("div", "muted", "Tools will appear on this page shortly."));
@@ -177,13 +187,58 @@ export function createBadge(opts: { visible: boolean }): Badge {
     }
     const btns = el("div", "btns");
     const done = el("button", "deny", "Close");
-    done.addEventListener("click", () => draftHost.replaceChildren());
+    done.addEventListener("click", () => {
+      draftState = "none";
+      draftHost.replaceChildren();
+    });
     btns.append(done);
     card.append(btns);
     draftHost.append(card);
   }
 
   buildBtn.addEventListener("click", openDraft);
+
+  /** Distinct recipe ids covering this page, from the currently registered tools. */
+  function activeRecipeIds(): string[] {
+    const ids = new Set<string>();
+    for (const t of tools) if (t.source === "recipe") ids.add(t.recipeId ?? "recipe");
+    return [...ids];
+  }
+
+  /**
+   * Hide "Build recipe" when a recipe already covers this page — building another
+   * would just create a duplicate. Show a hint (with an Edit-in-Studio link) instead.
+   */
+  function renderBuild() {
+    const ids = activeRecipeIds();
+    if (ids.length === 0) {
+      buildBtn.style.display = "";
+      buildHint.style.display = "none";
+      buildHint.replaceChildren();
+      return;
+    }
+    buildBtn.style.display = "none";
+    // A recipe just synced in — drop an open *draft* so it can't be double-saved,
+    // but keep the post-save confirmation the user may still be reading.
+    if (draftState === "draft") {
+      draftState = "none";
+      draftHost.replaceChildren();
+    }
+    buildHint.replaceChildren();
+    buildHint.append(document.createTextNode("✓ recipe active"));
+    const first = ids[0];
+    if (studioBase && first && first !== "recipe") {
+      const link = document.createElement("a");
+      link.className = "draft-link";
+      link.href = `${studioBase.replace(/\/+$/, "")}/recipes/${encodeURIComponent(first)}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = ids.length > 1 ? `${ids.length} recipes ↗` : "view in Studio ↗";
+      buildHint.append(document.createTextNode(" · "), link);
+    }
+    buildHint.style.display = "";
+    buildHint.title = `This page is covered by: ${ids.join(", ")}`;
+  }
 
   function renderPill() {
     label.textContent = hasMc ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "WebMCP off";
@@ -237,11 +292,13 @@ export function createBadge(opts: { visible: boolean }): Badge {
       status.textContent = has ? new URL(url).host : "no modelContext";
       renderPill();
       renderTools();
+      renderBuild();
     },
     setTools(list) {
       tools = list;
       renderPill();
       renderTools();
+      renderBuild();
     },
     onCall(msg) {
       entries.push({ callId: msg.callId, tool: msg.tool, input: msg.input, status: "running", text: "" });
@@ -302,11 +359,13 @@ export function createBadge(opts: { visible: boolean }): Badge {
     },
     setStudioBase(base) {
       studioBase = base;
+      renderBuild();
     },
   };
 
   renderPill();
   renderTools();
   renderLog();
+  renderBuild();
   return api;
 }

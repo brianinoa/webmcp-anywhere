@@ -29,8 +29,12 @@ publicly-writable recipe library. That surface deserves an explicit threat model
   with the generic layer are removed. The worker enforces the same rules — this is defense in depth.
 - **Overwriting the shared first-party library.** The seeded recipes (`youtube`, `twitch`, …)
   are read-only over the API (`PROTECTED_IDS`), so nobody can repoint `youtube` for every user.
-  Mutations require a known browser `Origin`; an origin-less client (curl, a server) is refused,
-  so the library can't be rewritten with a one-line script.
+  Overwrites and deletes (`PUT`/`DELETE`) require a known browser `Origin`; an origin-less client
+  (curl, a server) is refused, so the library can't be rewritten with a one-line script. An
+  origin-less **`POST`** (create) is the one exception: the extension's background service worker
+  creates fresh-id *user* recipes and cannot present an `Origin`. A create is low-risk because the
+  server assigns the id and a duplicate id `409`s — a create can only add a new recipe, never
+  clobber or remove an existing one, so overwrite/delete still need a trusted origin.
 - **Prompt injection via page content.** Every tool that returns scraped page text sets
   `untrustedContentHint: true`, and `describe_page`/`find_text`/chat-reading tools say so in
   their descriptions, so the agent treats returned content as data, not instructions.

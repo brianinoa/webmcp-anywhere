@@ -3,13 +3,17 @@
  * to expand a panel with registered tools, a live call log, and approval cards.
  * Vanilla DOM only.
  */
-import type { MainToIsolated, ToolSummary } from "@webmcp-anywhere/shared";
-import { summarize } from "../messaging";
+import type { MainToIsolated, Recipe, ToolSummary } from "@webmcp-anywhere/shared";
+import { summarize, type SavedRecipeResult } from "../messaging";
+import { buildDraftRecipe } from "../recipes/draft";
 import { BADGE_CSS } from "./styles";
 
 type ToolCall = Extract<MainToIsolated, { type: "tool-call" }>;
 type ToolResult = Extract<MainToIsolated, { type: "tool-result" }>;
 type ApprovalRequest = Extract<MainToIsolated, { type: "approval-request" }>;
+
+/** Saves a draft recipe via the content script's runtime channel (never fetches from the badge). */
+export type RecipeSaver = (recipe: Recipe) => Promise<SavedRecipeResult>;
 
 export interface Badge {
   setVisible(visible: boolean): void;
@@ -18,6 +22,9 @@ export interface Badge {
   onCall(msg: ToolCall): void;
   onResult(msg: ToolResult): void;
   requestApproval(msg: ApprovalRequest, respond: (approved: boolean) => void): void;
+  /** Wire the save path (content script owns the runtime channel) and the Studio base URL for links. */
+  setRecipeSaver(save: RecipeSaver): void;
+  setStudioBase(base: string): void;
 }
 
 interface LogEntry {
@@ -65,7 +72,14 @@ export function createBadge(opts: { visible: boolean }): Badge {
   hdr.append(title, status, closeBtn);
   const approvals = el("div");
   const toolsSec = el("div", "sec");
-  toolsSec.append(el("h4", "", "Tools"));
+  const toolsHdr = el("div", "sec-hdr");
+  toolsHdr.append(el("h4", "", "Tools"));
+  const buildBtn = el("button", "small build", "＋ Build recipe");
+  buildBtn.title = "Scan this page and draft a WebMCP recipe you can save and edit in Studio";
+  toolsHdr.append(buildBtn);
+  toolsSec.append(toolsHdr);
+  const draftHost = el("div");
+  toolsSec.append(draftHost);
   const toolsList = el("div");
   toolsSec.append(toolsList);
   const logSec = el("div", "sec");
@@ -90,6 +104,86 @@ export function createBadge(opts: { visible: boolean }): Badge {
   let hasMc = false;
   let running = 0;
   let pending = 0;
+  let recipeSaver: RecipeSaver | null = null;
+  let studioBase = "";
+
+  // ---- "Build a recipe from this page" ------------------------------------
+  function openDraft() {
+    setOpen(true);
+    draftHost.replaceChildren();
+    let draft: Recipe;
+    try {
+      draft = buildDraftRecipe();
+    } catch (err) {
+      draftHost.append(el("div", "draft err", `Could not scan this page: ${err instanceof Error ? err.message : String(err)}`));
+      return;
+    }
+    renderDraftCard(draft);
+  }
+
+  function renderDraftCard(draft: Recipe) {
+    draftHost.replaceChildren();
+    const card = el("div", "draft");
+    card.append(el("div", "draft-name", draft.name));
+    card.append(el("div", "muted", `${draft.tools.length} tool${draft.tools.length === 1 ? "" : "s"} · review before relying on these`));
+    const list = el("div", "draft-tools");
+    for (const t of draft.tools) list.append(el("span", "draft-chip", t.name));
+    card.append(list);
+    const status = el("div", "draft-status");
+    const btns = el("div", "btns");
+    const cancel = el("button", "deny", "Cancel");
+    const save = el("button", "approve", "Quick save");
+    cancel.addEventListener("click", () => draftHost.replaceChildren());
+    save.addEventListener("click", async () => {
+      if (!recipeSaver) {
+        status.textContent = "Save channel unavailable — reload the page and try again.";
+        return;
+      }
+      save.disabled = true;
+      cancel.disabled = true;
+      status.textContent = "Saving…";
+      let result: SavedRecipeResult;
+      try {
+        result = await recipeSaver(draft);
+      } catch (err) {
+        result = { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+      if (result.ok) {
+        renderSaved(result.recipe);
+      } else {
+        status.textContent = `Save failed: ${result.error}`;
+        save.disabled = false;
+        cancel.disabled = false;
+      }
+    });
+    btns.append(cancel, save);
+    card.append(status, btns);
+    draftHost.append(card);
+  }
+
+  function renderSaved(saved: Recipe) {
+    draftHost.replaceChildren();
+    const card = el("div", "draft saved");
+    card.append(el("div", "draft-name", `Saved as ${saved.id} ✓`));
+    card.append(el("div", "muted", "Tools will appear on this page shortly."));
+    if (studioBase) {
+      const link = document.createElement("a");
+      link.className = "draft-link";
+      link.href = `${studioBase.replace(/\/+$/, "")}/recipes/${encodeURIComponent(saved.id)}/edit`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Edit in Studio ↗";
+      card.append(link);
+    }
+    const btns = el("div", "btns");
+    const done = el("button", "deny", "Close");
+    done.addEventListener("click", () => draftHost.replaceChildren());
+    btns.append(done);
+    card.append(btns);
+    draftHost.append(card);
+  }
+
+  buildBtn.addEventListener("click", openDraft);
 
   function renderPill() {
     label.textContent = hasMc ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "WebMCP off";
@@ -202,6 +296,12 @@ export function createBadge(opts: { visible: boolean }): Badge {
       approve.focus();
       // Auto-deny slightly before the main-world timeout so the card doesn't linger.
       setTimeout(() => finish(false), 58_000);
+    },
+    setRecipeSaver(save) {
+      recipeSaver = save;
+    },
+    setStudioBase(base) {
+      studioBase = base;
     },
   };
 

@@ -109,7 +109,11 @@ export type RuntimeRequest =
   | { ns: typeof MSG_NAMESPACE; type: "page-event"; event: MainToIsolated }
   | { ns: typeof MSG_NAMESPACE; type: "getState"; tabId?: number }
   | { ns: typeof MSG_NAMESPACE; type: "getSettings" }
-  | { ns: typeof MSG_NAMESPACE; type: "sync-recipes"; force?: boolean };
+  | { ns: typeof MSG_NAMESPACE; type: "sync-recipes"; force?: boolean }
+  | { ns: typeof MSG_NAMESPACE; type: "save-recipe"; recipe: Recipe };
+
+/** Result of a "save-recipe" request: the saved recipe (with its server-assigned id) or an error. */
+export type SavedRecipeResult = { ok: true; recipe: Recipe } | { ok: false; error: string };
 
 export type RuntimePush =
   | { ns: typeof MSG_NAMESPACE; type: "recipes-updated"; recipes: Recipe[] };

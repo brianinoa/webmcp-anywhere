@@ -8,7 +8,7 @@
  * - Answers `getState`, `getSettings`, `sync-recipes` messages.
  */
 import { DEFAULT_SETTINGS, MSG_NAMESPACE, type ExtensionSettings, type Recipe, type SyncResponse } from "@webmcp-anywhere/shared";
-import type { CallLogEntry, RuntimeRequest, StateResponse, SyncResult, TabState } from "./messaging";
+import type { CallLogEntry, RuntimeRequest, SavedRecipeResult, StateResponse, SyncResult, TabState } from "./messaging";
 
 const ALARM = "webmcp-anywhere:sync";
 const SYNC_PERIOD_MIN = 10;
@@ -82,6 +82,41 @@ async function scheduledSync(force: boolean): Promise<SyncResult> {
   const result = await syncRecipes(force);
   if (result.source === "remote") await broadcastRecipes(result.recipes);
   return result;
+}
+
+/**
+ * POST a draft user recipe to the worker (which assigns a fresh id). On success,
+ * force a sync so the new recipe is cached and broadcast to every open tab — its
+ * tools then register on the current page within seconds via the fast-sync path.
+ */
+async function saveRecipe(recipe: Recipe): Promise<SavedRecipeResult> {
+  const settings = await getSettings();
+  const apiBase = settings.apiBase.replace(/\/+$/, "");
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(`${apiBase}/api/recipes`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify(recipe),
+    });
+    clearTimeout(timer);
+    const body = (await res.json().catch(() => undefined)) as
+      | (Recipe & { error?: string; errors?: string[] })
+      | undefined;
+    if (!res.ok) {
+      const err = body?.error ?? body?.errors?.join("; ") ?? `HTTP ${res.status}`;
+      return { ok: false, error: err };
+    }
+    if (!body || typeof body.id !== "string") return { ok: false, error: "Malformed response from server" };
+    const saved = body as Recipe;
+    // Make the new recipe live now: cache it + broadcast to tabs so its tools register.
+    await scheduledSync(true);
+    return { ok: true, recipe: saved };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 function tabState(tabId: number, url?: string): TabState {
@@ -165,6 +200,11 @@ chrome.runtime.onMessage.addListener((raw: unknown, sender, sendResponse) => {
       scheduledSync(!!msg.force)
         .then(sendResponse)
         .catch((err) => sendResponse({ recipes: [], source: "none", error: String(err) } satisfies SyncResult));
+      return true;
+    case "save-recipe":
+      saveRecipe(msg.recipe)
+        .then(sendResponse)
+        .catch((err) => sendResponse({ ok: false, error: String(err) } satisfies SavedRecipeResult));
       return true;
   }
   return false;

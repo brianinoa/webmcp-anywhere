@@ -34,6 +34,19 @@ export const BADGE_CSS = `
 .muted { color: #9a9ab5; }
 .sec { margin-top: 10px; }
 .sec h4 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #9a9ab5; }
+.sec-hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+button.build { background: #1e2a4a; color: #93c5fd; }
+button.build:hover { background: #26356a; }
+.draft { background: #14192b; border: 1px solid #2d3a5c; border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; }
+.draft.err { border-color: #b45309; color: #fca5a5; }
+.draft.saved { border-color: #16a34a; }
+.draft-name { font-weight: 700; font-size: 12.5px; margin-bottom: 2px; word-break: break-word; }
+.draft-tools { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.draft-chip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; padding: 1px 6px;
+  border-radius: 999px; background: #1c1c2b; color: #c5c5da; border: 1px solid #2d3a5c; }
+.draft-status { color: #9a9ab5; font-size: 11px; margin: 4px 0; min-height: 0; }
+.draft-link { display: inline-block; margin: 4px 0 6px; color: #93c5fd; text-decoration: underline; font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
 .tool { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid #22223a; }
 .tool .name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip { font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 600; text-transform: uppercase; }

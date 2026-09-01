@@ -17,7 +17,7 @@ import {
 } from "@webmcp-anywhere/shared";
 import { validateRecipe } from "./recipes/loader";
 import { createBadge, type Badge } from "./badge";
-import { log, onMainMessage, postToMain, sendRuntime, warn, type RuntimePush, type SyncResult } from "./messaging";
+import { log, onMainMessage, postToMain, sendRuntime, warn, type RuntimePush, type SavedRecipeResult, type SyncResult } from "./messaging";
 
 // Bundled first-party recipes (recipes/*.json at repo root). Empty glob is fine.
 const bundledModules = import.meta.glob<{ default: Recipe }>("../../recipes/*.json", { eager: true });
@@ -83,6 +83,7 @@ async function loadSettings(): Promise<void> {
   }
   postToMain({ type: "settings", settings });
   badge?.setVisible(settings.showBadge);
+  badge?.setStudioBase(settings.apiBase);
 }
 
 async function loadRecipes(): Promise<void> {
@@ -164,6 +165,7 @@ function installRuntimeListener(): void {
     if (touched) {
       postToMain({ type: "settings", settings });
       badge?.setVisible(settings.showBadge);
+      badge?.setStudioBase(settings.apiBase);
     }
   });
 }
@@ -184,10 +186,20 @@ function installStudioListener(): void {
   });
 }
 
+/** Save a draft recipe by asking the background service worker to POST it (the badge never fetches). */
+function saveRecipe(recipe: Recipe): Promise<SavedRecipeResult> {
+  return sendRuntime<SavedRecipeResult>({ type: "save-recipe", recipe }).then(
+    (res) => res ?? { ok: false, error: "No response from background" },
+    (err) => ({ ok: false, error: err instanceof Error ? err.message : String(err) }),
+  );
+}
+
 function mountBadge(): void {
   const mount = () => {
     try {
       badge = createBadge({ visible: settings.showBadge });
+      badge.setRecipeSaver(saveRecipe);
+      badge.setStudioBase(settings.apiBase);
     } catch (err) {
       warn("badge failed to mount:", err);
     }

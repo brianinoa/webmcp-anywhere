@@ -120,12 +120,22 @@ function validateAction(a: unknown, path: string, errors: string[]): void {
   }
 }
 
-/** Structural validation of an untrusted recipe object (no external deps). */
-export function validateRecipe(r: unknown): ValidateResult {
+/**
+ * Structural validation of an untrusted recipe object (no external deps).
+ *
+ * `allowMissingId` permits a draft recipe with no `id` (the worker assigns one on
+ * POST). It defaults to false so the remote-recipe hardening path — which always
+ * receives recipes that already carry a server id — keeps rejecting id-less input.
+ */
+export function validateRecipe(r: unknown, opts: { allowMissingId?: boolean } = {}): ValidateResult {
   const errors: string[] = [];
   if (!isObj(r)) return { ok: false, errors: ["recipe must be an object"] };
 
-  if (!isNonEmptyStr(r.id)) errors.push("id must be a non-empty string");
+  if (r.id === undefined && opts.allowMissingId) {
+    // draft recipe: id is intentionally absent and will be assigned by the server.
+  } else if (!isNonEmptyStr(r.id)) {
+    errors.push("id must be a non-empty string");
+  }
   if (!isNonEmptyStr(r.name)) errors.push("name must be a non-empty string");
   if (!isStr(r.description)) errors.push("description must be a string");
   if (!isNum(r.version)) errors.push("version must be a number");

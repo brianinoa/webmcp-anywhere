@@ -14,9 +14,12 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function originAllowed(origin: string | null, method: string): boolean {
   if (SAFE_METHODS.has(method)) return true; // reads are open, with or without an Origin
-  // Mutations must come from a known browser origin. A missing Origin (curl, server-side
-  // client) is NOT trusted here — otherwise anyone could overwrite the shared library.
-  if (!origin) return false;
+  // Origin-less POST is allowed: the extension's background service worker creates
+  // fresh-id user recipes and cannot present an Origin. A create can't clobber an existing
+  // recipe (the id is server-assigned; a duplicate id 409s), so it is low-risk. Overwrite
+  // (PUT) and delete (DELETE) still require a trusted browser Origin — an origin-less client
+  // (curl, server) must never be able to rewrite or remove the shared library.
+  if (!origin) return method === "POST";
   return STUDIO_ORIGINS.some((re) => re.test(origin));
 }
 

@@ -15,6 +15,12 @@
       "id": "bb37d064e7ae4177bc00ad0a8246a93a"
     }
   ],
+  // Remote-control relay. `Room` keeps no durable storage (live sockets only), but
+  // new DO classes must be declared as SQLite-backed on current compat dates.
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
   "assets": {
     // Built by `pnpm --filter @webmcp-anywhere/studio build`.
     "directory": "../studio/dist",

@@ -865,3 +865,309 @@ textarea.mono {
   padding: 0.5rem 0;
   font-size: 0.88rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Remote control (/remote, /remote/:code) — mobile-first, tappable.
+   --------------------------------------------------------------------------- */
+.remote-blurb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+  background: linear-gradient(135deg, var(--accent-soft), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.remote-blurb h2 {
+  margin: 0 0 0.25rem;
+}
+.remote-blurb p {
+  margin: 0;
+  max-width: 46ch;
+}
+.remote-blurb-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+.remote-blurb-form input {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.remote-index {
+  max-width: 480px;
+  margin: 2rem auto;
+}
+.remote-index-form {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+.remote-index-form .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+.remote-index-form input {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1.1rem;
+}
+.remote-index-hint {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* The controller surface itself. */
+.remote {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-bottom: 3rem;
+}
+.remote-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0 0.85rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.remote-code {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.remote-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.remote-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.remote-status-wait .remote-status-dot {
+  background: var(--write);
+  box-shadow: 0 0 0 3px var(--write-soft);
+}
+.remote-status-live {
+  color: var(--read);
+}
+.remote-status-live .remote-status-dot {
+  background: var(--read);
+  box-shadow: 0 0 0 3px var(--read-soft);
+}
+.remote-page {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.remote-empty {
+  padding: 2rem 0.5rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.remote-group {
+  margin-bottom: 1.5rem;
+}
+.remote-group-title {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 0.6rem;
+}
+.remote-cards {
+  display: grid;
+  gap: 0.7rem;
+}
+.remote-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.remote-card-disabled {
+  opacity: 0.72;
+}
+.remote-card-tap {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.85rem 0.95rem;
+  cursor: pointer;
+  min-height: 56px;
+}
+.remote-card-tap:disabled {
+  cursor: not-allowed;
+}
+.remote-card-tap:not(:disabled):active {
+  background: var(--surface-2);
+}
+.remote-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.remote-card-name {
+  font-family: var(--mono);
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+.remote-card-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.remote-card-note {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--sensitive);
+  font-weight: 600;
+}
+.remote-card-hint {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.remote-form {
+  padding: 0 0.95rem 0.95rem;
+  border-top: 1px solid var(--border);
+}
+.remote-field {
+  max-width: none;
+  margin-top: 0.6rem;
+}
+.remote-req {
+  color: var(--danger);
+}
+.remote-run {
+  margin-top: 0.7rem;
+  width: 100%;
+  min-height: 44px;
+}
+
+/* Activity log */
+.remote-log {
+  margin-top: 1rem;
+}
+.remote-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.remote-log-item {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+}
+.remote-log-ok {
+  border-left-color: var(--read);
+}
+.remote-log-error {
+  border-left-color: var(--danger);
+}
+.remote-log-blocked {
+  border-left-color: var(--sensitive);
+}
+.remote-log-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.remote-log-head code {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.remote-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+.remote-badge-ok {
+  background: var(--read-soft);
+  color: var(--read);
+}
+.remote-badge-err {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.remote-badge-block {
+  background: var(--sensitive-soft);
+  color: var(--sensitive);
+}
+.remote-log-msg {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+}
+.remote-log-out {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+.remote-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: remote-spin 0.7s linear infinite;
+}
+@keyframes remote-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .remote-blurb-form,
+  .remote-index-form {
+    flex-wrap: wrap;
+  }
+  .remote-blurb-form input,
+  .remote-index-form .field {
+    flex: 1 1 100%;
+  }
+}

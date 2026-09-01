@@ -5,6 +5,8 @@ import { Home } from "./pages/Home";
 import { NotFound } from "./pages/NotFound";
 import { RecipeDetail } from "./pages/RecipeDetail";
 import { RecipeEditor } from "./pages/RecipeEditor";
+import { Remote } from "./pages/Remote";
+import { RemoteIndex } from "./pages/RemoteIndex";
 import { setNavigator } from "./webmcp";
 
 export function App() {
@@ -22,6 +24,8 @@ export function App() {
           <Route path="/recipes/new" element={<RecipeEditor />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
+          <Route path="/remote" element={<RemoteIndex />} />
+          <Route path="/remote/:code" element={<Remote />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

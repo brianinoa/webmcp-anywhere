@@ -41,6 +41,32 @@ publicly-writable recipe library. That surface deserves an explicit threat model
 - **The page clicking its own approval button.** The badge is a **closed** shadow DOM, so page
   scripts cannot reach the approve/deny controls.
 
+## Remote control
+
+The extension can "arm" a single browser tab so a remote device (a phone on the
+`/remote/:code` page) can call that tab's WebMCP tools through a relay Durable Object.
+The trust model:
+
+- **Nothing is controllable until a human arms a tab.** Arming is an explicit action in
+  the extension popup, on the target device, for the popup's current tab. No page, recipe,
+  or backend can arm a tab. Disarming (a button, closing the tab, or the browser session
+  ending) tears the connection down immediately.
+- **Sensitive tools are blocked over remote control, in two independent places.** The
+  background service worker refuses to forward a `call` for any tool whose summary is
+  `"sensitive"`, and `main-world.ts` re-checks the *effective* sensitivity (the authority)
+  and refuses to run one even if the background were bypassed. So the remote surface is
+  reads and plain writes only; anything that submits a form, navigates, or runs `js` stays
+  on the target device and cannot be triggered remotely.
+- **The room code is unguessable.** It is 8 characters from a 30-symbol unambiguous alphabet
+  (`ROOM_CODE_ALPHABET`, no `0/O/1/I/l`) drawn from `crypto.getRandomValues` — ~2^49 of
+  entropy — and only one tab may be armed at a time.
+
+**Residual risk (stated honestly):** anyone who learns the code can drive the armed tab's
+non-sensitive tools until it is disarmed — the relay authenticates by knowledge of the code,
+nothing more. Blast radius is one tab's read/write tools (never sensitive ones), the code is
+single-tab and unguessable rather than enumerable, and the badge logs every remotely-triggered
+call. Users should treat the code like a short-lived shared secret and disarm when done.
+
 ## Known residual limitation (stated honestly)
 
 Because `main-world.ts` shares the page's realm, a **malicious page** can post a forged

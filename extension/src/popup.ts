@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, type ExtensionSettings } from "@webmcp-anywhere/shared";
-import { sendRuntime, summarize, type StateResponse, type SyncResult } from "./messaging";
+import { sendRuntime, summarize, type ArmResult, type RemoteStatus, type StateResponse, type SyncResult } from "./messaging";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -87,13 +87,82 @@ function renderState(resp: StateResponse): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Remote control
+// ---------------------------------------------------------------------------
+
+function renderRemote(s: RemoteStatus): void {
+  const idle = $("remoteIdle");
+  const armed = $("remoteArmed");
+  idle.hidden = s.armed;
+  armed.hidden = !s.armed;
+  if (!s.armed) return;
+  $("remoteCode").textContent = s.code ?? "";
+  $<HTMLInputElement>("remoteUrl").value = s.remoteUrl ?? "";
+  const dot = $("remoteDot");
+  const text = $("remoteConnText");
+  const remotes = s.remotes ?? 0;
+  if (!s.connected) {
+    dot.className = "dot";
+    text.textContent = "Connecting to relay…";
+  } else if (remotes > 0) {
+    dot.className = "dot live";
+    text.textContent = `${remotes} device${remotes === 1 ? "" : "s"} connected`;
+  } else {
+    dot.className = "dot wait";
+    text.textContent = "Waiting for a device…";
+  }
+}
+
+async function refreshRemote(): Promise<void> {
+  try {
+    const s = await sendRuntime<RemoteStatus>({ type: "remote-status" });
+    renderRemote(s ?? { armed: false });
+  } catch {
+    /* background asleep; ignore */
+  }
+}
+
+function wireRemote(): void {
+  $<HTMLButtonElement>("armBtn").addEventListener("click", async () => {
+    const btn = $<HTMLButtonElement>("armBtn");
+    const tabId = await currentTabId();
+    if (tabId === undefined) return;
+    btn.disabled = true;
+    try {
+      const res = await sendRuntime<ArmResult>({ type: "arm-remote", tabId });
+      if (!res.ok) $("status").textContent = `Remote: ${res.error}`;
+      await refreshRemote();
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  $<HTMLButtonElement>("disarmBtn").addEventListener("click", async () => {
+    await sendRuntime({ type: "disarm-remote" });
+    await refreshRemote();
+  });
+  $<HTMLButtonElement>("copyLink").addEventListener("click", async () => {
+    const url = $<HTMLInputElement>("remoteUrl").value;
+    try {
+      await navigator.clipboard.writeText(url);
+      $("copyInfo").textContent = "copied";
+    } catch {
+      $<HTMLInputElement>("remoteUrl").select();
+      $("copyInfo").textContent = "select + copy";
+    }
+    setTimeout(() => ($("copyInfo").textContent = ""), 1500);
+  });
+}
+
 async function refresh(): Promise<void> {
   const tabId = await currentTabId();
   const resp = await sendRuntime<StateResponse>({ type: "getState", tabId });
   bindSettings(resp.settings);
   renderState(resp);
+  await refreshRemote();
 }
 
 wireSettings();
+wireRemote();
 refresh().catch((err) => ($("status").textContent = `Error: ${err}`));
 setInterval(() => refresh().catch(() => {}), 1500);

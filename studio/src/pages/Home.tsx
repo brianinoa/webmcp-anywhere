@@ -1,10 +1,48 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { RecipeCard } from "../components/RecipeCard";
 import { useAsync, useDebounced } from "../hooks";
 
 const REPO_URL = "https://github.com/brianinoa/webmcp-anywhere";
+
+function RemoteBlurb() {
+  const [code, setCode] = useState("");
+  const navigate = useNavigate();
+  const clean = code.toUpperCase().replace(/[^A-Z2-9]/g, "");
+  const valid = clean.length >= 6 && clean.length <= 16;
+  return (
+    <section className="remote-blurb">
+      <div>
+        <h2>Remote control your recipes</h2>
+        <p className="muted">
+          Enable remote control from the extension on your computer, then open the code on your phone to tap-run its tools
+          from across the room.
+        </p>
+      </div>
+      <form
+        className="remote-blurb-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) navigate(`/remote/${clean}`);
+        }}
+      >
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Enter a room code"
+          aria-label="Room code"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <button className="btn btn-primary" type="submit" disabled={!valid}>
+          Connect
+        </button>
+      </form>
+    </section>
+  );
+}
 
 export function Home() {
   const [q, setQ] = useState("");
@@ -56,6 +94,8 @@ export function Home() {
           </li>
         </ol>
       </section>
+
+      <RemoteBlurb />
 
       <section className="browse">
         <div className="browse-head">

@@ -162,6 +162,35 @@ export interface SyncResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Remote control: a Durable Object "Room" relays messages between a TARGET (the
+// extension driving a browser tab) and one or more REMOTEs (a phone/other device
+// running the /remote/:code page). Connect via
+//   GET /api/room/:code?role=target|remote   with an `Upgrade: websocket` header.
+// The relay is stateless plumbing; all consent lives at the target (see SECURITY.md).
+// ---------------------------------------------------------------------------
+
+export type RoomRole = "target" | "remote";
+
+export type RoomMessage =
+  /** Sent by each side on connect. */
+  | { t: "hello"; role: RoomRole }
+  /** Relay -> everyone: how many of each role are currently connected. */
+  | { t: "peers"; targets: number; remotes: number }
+  /** target -> remote: the tools currently callable on the controlled tab, plus page context. */
+  | { t: "tools"; tools: ToolSummary[]; page?: { url: string; title?: string } }
+  /** remote -> target: invoke a tool by name with JSON input. */
+  | { t: "call"; callId: string; tool: string; input: Record<string, unknown> }
+  /** target -> remote: the result (stringified) or error for a prior `call`. */
+  | { t: "result"; callId: string; ok: boolean; result?: string; error?: string; blocked?: boolean }
+  /** Liveness. */
+  | { t: "ping" }
+  | { t: "pong" };
+
+/** Room codes are short, unguessable, and unambiguous (no 0/O/1/I/l). */
+export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const ROOM_CODE_LENGTH = 8;
+
+// ---------------------------------------------------------------------------
 // Extension messaging: MAIN world <-> ISOLATED content script <-> background.
 // MAIN <-> ISOLATED uses window.postMessage with these envelopes; ISOLATED <->
 // background uses chrome.runtime messaging with the same payloads.
@@ -188,6 +217,12 @@ export interface ToolSummary {
   source: "generic" | "recipe";
   recipeId?: string;
   sensitivity: Sensitivity;
+  /**
+   * Optional: the tool's input schema, so a remote-control UI can render a typed
+   * form for its parameters. Populated by the extension target when relaying the
+   * `tools` message; absent for a tool with no inputs (the remote fires it directly).
+   */
+  inputSchema?: JSONSchema;
 }
 
 export interface ExtensionSettings {

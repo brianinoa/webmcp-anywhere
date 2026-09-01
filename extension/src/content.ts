@@ -17,7 +17,7 @@ import {
 } from "@webmcp-anywhere/shared";
 import { validateRecipe } from "./recipes/loader";
 import { createBadge, type Badge } from "./badge";
-import { log, onMainMessage, postToMain, sendRuntime, warn, type RuntimePush, type SavedRecipeResult, type SyncResult } from "./messaging";
+import { log, onMainMessage, onRunResult, postRunTool, postToMain, sendRuntime, warn, type RuntimePush, type SavedRecipeResult, type SyncResult } from "./messaging";
 
 // Bundled first-party recipes (recipes/*.json at repo root). Empty glob is fine.
 const bundledModules = import.meta.glob<{ default: Recipe }>("../../recipes/*.json", { eager: true });
@@ -151,6 +151,10 @@ function installRuntimeListener(): void {
     if (msg.type === "recipes-updated") {
       log("recipes updated from background:", msg.recipes.length);
       pushRecipes(msg.recipes);
+    } else if (msg.type === "remote-run") {
+      // A remote device asked the background to run a tool on this tab. Bridge it
+      // into the MAIN world, which enforces the sensitivity floor and runs invoke().
+      postRunTool({ callId: msg.callId, tool: msg.tool, input: msg.input });
     }
   });
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -208,11 +212,19 @@ function mountBadge(): void {
   else document.addEventListener("DOMContentLoaded", mount, { once: true });
 }
 
+/** MAIN replies to a `run-tool` with `run-result`; relay it up to the background. */
+function installRemoteRunBridge(): void {
+  onRunResult((msg) => {
+    sendRuntime({ type: "remote-run-result", callId: msg.callId, ok: msg.ok, result: msg.result, error: msg.error }).catch(() => {});
+  });
+}
+
 async function main(): Promise<void> {
   if (window !== window.top) return;
   installMainListener();
   installRuntimeListener();
   installStudioListener();
+  installRemoteRunBridge();
   mountBadge();
   await loadSettings();
   await loadRecipes();

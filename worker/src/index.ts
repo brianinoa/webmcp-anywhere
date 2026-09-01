@@ -4,6 +4,11 @@ import { SEED_RECIPES } from "./seed";
 import { RecipeStore } from "./store";
 import { normalizeRecipe, shortId, slugify, validateRecipe } from "./validate";
 
+export { Room } from "./room";
+
+/** Room codes: the shared alphabet (no 0/O/1/I/l), uppercase, 6-16 chars. */
+const ROOM_CODE_RE = /^[A-Z2-9]{6,16}$/;
+
 /** First-party recipe ids are read-only over the API so nobody can poison what everyone syncs. */
 const PROTECTED_IDS = new Set(SEED_RECIPES.map((r) => r.id));
 
@@ -23,6 +28,11 @@ const API_PREFIX = "/api/";
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
+    // Remote-control relay: a WebSocket upgrade forwarded to the Room DO. Handled
+    // before the JSON API branch — it is a GET upgrade, not a CORS-gated mutation.
+    if (url.pathname.startsWith("/api/room/")) {
+      return handleRoom(request, url, env);
+    }
     if (url.pathname.startsWith(API_PREFIX)) {
       try {
         return await handleApi(request, url, env, ctx);
@@ -43,6 +53,32 @@ async function serveAsset(request: Request, env: Env): Promise<Response> {
   const res = new Response(upstream.body, upstream);
   for (const [k, v] of Object.entries(WEBMCP_HEADERS)) res.headers.set(k, v);
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Remote-control relay
+// ---------------------------------------------------------------------------
+
+/** GET /api/room/:code — validate, then forward the WebSocket upgrade to the Room DO. */
+function handleRoom(request: Request, url: URL, env: Env): Response | Promise<Response> {
+  const segments = url.pathname.split("/").filter(Boolean); // ["api", "room", code]
+  if (segments.length !== 3) return new Response("Not found", { status: 404 });
+  if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
+  if ((request.headers.get("Upgrade") ?? "").toLowerCase() !== "websocket") {
+    return new Response("Expected Upgrade: websocket", { status: 426 });
+  }
+
+  const role = url.searchParams.get("role");
+  if (role !== "target" && role !== "remote") {
+    return new Response("role must be target or remote", { status: 400 });
+  }
+
+  // Uppercase once, here, so target and remote always resolve to the same DO.
+  const code = decodeURIComponent(segments[2]).toUpperCase();
+  if (!ROOM_CODE_RE.test(code)) return new Response("Invalid room code", { status: 400 });
+
+  const stub = env.ROOM.get(env.ROOM.idFromName(code));
+  return stub.fetch(request);
 }
 
 // ---------------------------------------------------------------------------

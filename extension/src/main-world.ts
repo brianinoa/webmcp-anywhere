@@ -24,7 +24,7 @@ import {
 } from "@webmcp-anywhere/shared";
 import { GENERIC_TOOLS, type GenericToolDef } from "./generic";
 import { runRecipeTool } from "./recipes/runner";
-import { log, newCallId, onIsolatedMessage, postToIsolated, summarize, warn } from "./messaging";
+import { log, newCallId, onIsolatedMessage, onRunTool, postRunResult, postToIsolated, summarize, warn } from "./messaging";
 
 const APPROVAL_TIMEOUT_MS = 60_000;
 const RESULT_MAX_CHARS = 8_000;
@@ -32,6 +32,10 @@ const RESULT_MAX_CHARS = 8_000;
 interface Registered {
   summary: ToolSummary;
   controller: AbortController;
+  /** The registered tool, so a remote run can reuse its invoke()-wrapped execute. */
+  tool: ModelContextTool;
+  /** The *effective* sensitivity (stricter of declared vs. actions) — the real gate. */
+  sensitivity: Sensitivity;
   /** Recipe version the tool was built from, so recipe updates re-register. */
   recipeVersion?: number;
 }
@@ -128,13 +132,18 @@ function parseInput(input: unknown): Record<string, unknown> {
 // Registration
 // ---------------------------------------------------------------------------
 
-async function register(tool: ModelContextTool, summary: ToolSummary, recipeVersion?: number): Promise<void> {
+async function register(
+  tool: ModelContextTool,
+  summary: ToolSummary,
+  sensitivity: Sensitivity,
+  recipeVersion?: number,
+): Promise<void> {
   if (!state.mc) return;
   if (state.registered.has(tool.name)) await unregister(tool.name);
   const controller = new AbortController();
   try {
     await state.mc.registerTool(tool, { signal: controller.signal });
-    state.registered.set(tool.name, { summary, controller, recipeVersion });
+    state.registered.set(tool.name, { summary, controller, tool, sensitivity, recipeVersion });
   } catch (err) {
     warn(`failed to register tool "${tool.name}":`, err);
   }
@@ -188,13 +197,18 @@ function recipeToTool(recipe: Recipe, tool: RecipeTool): ModelContextTool {
 
 async function registerGeneric(): Promise<void> {
   for (const def of GENERIC_TOOLS) {
-    await register(genericToTool(def), {
-      name: def.name,
-      title: def.title,
-      description: def.description,
-      source: "generic",
-      sensitivity: def.sensitivity,
-    });
+    await register(
+      genericToTool(def),
+      {
+        name: def.name,
+        title: def.title,
+        description: def.description,
+        source: "generic",
+        sensitivity: def.sensitivity,
+        inputSchema: def.inputSchema,
+      },
+      def.sensitivity,
+    );
   }
 }
 
@@ -243,7 +257,9 @@ async function syncRecipeTools(): Promise<void> {
         source: "recipe",
         recipeId: recipe.id,
         sensitivity: tool.sensitivity,
+        inputSchema: tool.inputSchema,
       },
+      effectiveSensitivity(tool.sensitivity, tool.actions),
       recipe.version,
     );
     changed = true;
@@ -324,12 +340,40 @@ function installMessageHandlers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Remote control: run a registered tool on demand for a remote caller.
+// ---------------------------------------------------------------------------
+
+function installRemoteRunHandler(): void {
+  onRunTool(async (msg) => {
+    const reg = state.registered.get(msg.tool);
+    if (!reg) {
+      postRunResult({ callId: msg.callId, ok: false, error: `tool "${msg.tool}" is not registered on this page` });
+      return;
+    }
+    // Enforce the safety floor here too: sensitive tools never run over remote control.
+    if (reg.sensitivity === "sensitive") {
+      postRunResult({ callId: msg.callId, ok: false, error: "blocked: sensitive" });
+      return;
+    }
+    try {
+      // execute() is the same invoke()-wrapped pipeline the agent path uses, so the
+      // call logs to the badge and returns a string result.
+      const result = await reg.tool.execute(parseInput(msg.input), { signal: signalOf(undefined) });
+      postRunResult({ callId: msg.callId, ok: true, result: typeof result === "string" ? result : String(result) });
+    } catch (err) {
+      postRunResult({ callId: msg.callId, ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
   if (window !== window.top) return; // top frame only
   installMessageHandlers();
+  installRemoteRunHandler();
 
   const mc = await waitForModelContext();
   if (!mc) {

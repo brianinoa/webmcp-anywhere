@@ -56,6 +56,59 @@ export function onIsolatedMessage(handler: (msg: IsolatedToMain) => void): () =>
   return () => window.removeEventListener("message", listener);
 }
 
+// ---------------------------------------------------------------------------
+// Remote-control run channel (ISOLATED <-> MAIN), extension-local envelopes.
+// Kept out of the shared MainToIsolated/IsolatedToMain unions on purpose: these
+// never leave the extension and shouldn't widen the cross-package contract.
+// ---------------------------------------------------------------------------
+
+/** ISOLATED -> MAIN: run a registered tool by name for a remote caller. */
+export interface RunToolMsg {
+  ns: typeof MSG_NAMESPACE;
+  type: "run-tool";
+  callId: string;
+  tool: string;
+  input: Record<string, unknown>;
+}
+
+/** MAIN -> ISOLATED: the result of a `run-tool`. */
+export interface RunResultMsg {
+  ns: typeof MSG_NAMESPACE;
+  type: "run-result";
+  callId: string;
+  ok: boolean;
+  result?: string;
+  error?: string;
+}
+
+export function postRunTool(msg: Omit<RunToolMsg, "ns" | "type">): void {
+  window.postMessage({ ns: MSG_NAMESPACE, type: "run-tool", ...msg } satisfies RunToolMsg, "*");
+}
+
+export function postRunResult(msg: Omit<RunResultMsg, "ns" | "type">): void {
+  window.postMessage({ ns: MSG_NAMESPACE, type: "run-result", ...msg } satisfies RunResultMsg, "*");
+}
+
+/** Listen (in the MAIN world) for `run-tool` requests posted by the ISOLATED world. */
+export function onRunTool(handler: (msg: RunToolMsg) => void): () => void {
+  const listener = (ev: MessageEvent) => {
+    if (ev.source !== window || !isEnvelope(ev.data) || ev.data.type !== "run-tool") return;
+    handler(ev.data as unknown as RunToolMsg);
+  };
+  window.addEventListener("message", listener);
+  return () => window.removeEventListener("message", listener);
+}
+
+/** Listen (in the ISOLATED world) for `run-result` replies posted by the MAIN world. */
+export function onRunResult(handler: (msg: RunResultMsg) => void): () => void {
+  const listener = (ev: MessageEvent) => {
+    if (ev.source !== window || !isEnvelope(ev.data) || ev.data.type !== "run-result") return;
+    handler(ev.data as unknown as RunResultMsg);
+  };
+  window.addEventListener("message", listener);
+  return () => window.removeEventListener("message", listener);
+}
+
 let counter = 0;
 export function newCallId(): string {
   counter += 1;
@@ -110,13 +163,37 @@ export type RuntimeRequest =
   | { ns: typeof MSG_NAMESPACE; type: "getState"; tabId?: number }
   | { ns: typeof MSG_NAMESPACE; type: "getSettings" }
   | { ns: typeof MSG_NAMESPACE; type: "sync-recipes"; force?: boolean }
-  | { ns: typeof MSG_NAMESPACE; type: "save-recipe"; recipe: Recipe };
+  | { ns: typeof MSG_NAMESPACE; type: "save-recipe"; recipe: Recipe }
+  // Remote control (popup <-> background):
+  | { ns: typeof MSG_NAMESPACE; type: "arm-remote"; tabId: number }
+  | { ns: typeof MSG_NAMESPACE; type: "disarm-remote" }
+  | { ns: typeof MSG_NAMESPACE; type: "remote-status" }
+  // Internal (content -> background): result of a remotely-triggered tool run.
+  | { ns: typeof MSG_NAMESPACE; type: "remote-run-result"; callId: string; ok: boolean; result?: string; error?: string };
 
 /** Result of a "save-recipe" request: the saved recipe (with its server-assigned id) or an error. */
 export type SavedRecipeResult = { ok: true; recipe: Recipe } | { ok: false; error: string };
 
+/** Result of an "arm-remote" request. */
+export type ArmResult = { ok: true; code: string; remoteUrl: string } | { ok: false; error: string };
+
+/** Snapshot of the remote-control state, returned by "remote-status". */
+export interface RemoteStatus {
+  armed: boolean;
+  tabId?: number;
+  code?: string;
+  remoteUrl?: string;
+  /** Whether the target WebSocket is currently connected to the relay. */
+  connected?: boolean;
+  /** Live peer counts from the relay's last `peers` message. */
+  targets?: number;
+  remotes?: number;
+}
+
 export type RuntimePush =
-  | { ns: typeof MSG_NAMESPACE; type: "recipes-updated"; recipes: Recipe[] };
+  | { ns: typeof MSG_NAMESPACE; type: "recipes-updated"; recipes: Recipe[] }
+  // Background -> content: run a tool on demand for a remote caller.
+  | { ns: typeof MSG_NAMESPACE; type: "remote-run"; callId: string; tool: string; input: Record<string, unknown> };
 
 export interface SyncResult {
   recipes: Recipe[];
